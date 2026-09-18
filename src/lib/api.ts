@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = "";
+const DEFAULT_API_BASE = "https://hepzibahchurchportal.onrender.com/api";
 
 export function getApiBase(): string {
   return (localStorage.getItem("apiBase") || DEFAULT_API_BASE).replace(/\/$/, "");

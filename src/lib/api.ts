@@ -40,10 +40,36 @@ export function clearSession() {
 
 export function unwrap<T>(value: unknown): T[] {
   if (value && typeof value === "object" && Array.isArray((value as { $values?: unknown }).$values)) {
-    return (value as { $values: T[] }).$values;
+    return (value as { $values: T[] }).$values.map((item) => deRef(item));
   }
-  if (Array.isArray(value)) return value as T[];
+  if (Array.isArray(value)) return (value as T[]).map((item) => deRef(item));
   return [];
+}
+
+function isRefNode(node: unknown): node is { $id?: unknown; $values?: unknown } {
+  return !!node && typeof node === "object";
+}
+
+export function deRef<T>(node: T): T {
+  if (Array.isArray(node)) {
+    return node.map(deRef) as unknown as T;
+  }
+  if (isRefNode(node)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(node)) {
+      if (key === "$id") continue;
+      out[key] = value;
+    }
+    if ("$values" in node) {
+      const arr = (node as { $values: unknown }).$values;
+      if (isRefNode(arr) && "$values" in arr) {
+        return deRef<unknown[]>(Array.isArray((arr as { $values: unknown }).$values) ? (arr as { $values: unknown[] }).$values : []) as unknown as T;
+      }
+      return deRef<unknown[]>(Array.isArray(arr) ? arr : []) as unknown as T;
+    }
+    return deRef(out) as unknown as T;
+  }
+  return node;
 }
 
 export interface BaseResponse<T> {

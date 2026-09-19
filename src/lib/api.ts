@@ -337,6 +337,12 @@ export interface UserDto {
   userRoles: string[];
 }
 
+export interface CreateUserRequest {
+  email: string;
+  password: string;
+  roles: string[];
+}
+
 export interface UpdateProfileRequest {
   displayName: string | null;
   avatarBase64: string | null;

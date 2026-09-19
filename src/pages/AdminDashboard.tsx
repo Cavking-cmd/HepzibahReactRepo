@@ -6,8 +6,9 @@ import { AttendanceSection } from "@/components/sections/AttendanceSection";
 import { FellowshipCentersSection } from "@/components/sections/FellowshipCentersSection";
 import { FellowshipAttendanceSection } from "@/components/sections/FellowshipAttendanceSection";
 import { InventorySection } from "@/components/sections/InventorySection";
+import { UsersSection } from "@/components/sections/UsersSection";
 import { ReportsSection } from "@/components/sections/reports/ReportsSection";
-import { LayoutDashboard, Calendar, Users, Home, ClipboardList, Package, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Home, ClipboardList, Package, UserPlus, BarChart3 } from "lucide-react";
 
 const SECTIONS: NavSection[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -16,6 +17,7 @@ const SECTIONS: NavSection[] = [
   { id: "centers", label: "Fellowship Centers", icon: Home },
   { id: "fellowship-attendance", label: "Fellowship Attendance", icon: ClipboardList },
   { id: "inventory", label: "Inventory", icon: Package },
+  { id: "users", label: "Users & Roles", icon: UserPlus },
   { id: "reports", label: "Reports", icon: BarChart3 },
 ];
 
@@ -36,6 +38,7 @@ export default function AdminDashboard() {
       {activeSection === "centers" && <FellowshipCentersSection canWrite />}
       {activeSection === "fellowship-attendance" && <FellowshipAttendanceSection canWrite canApprove />}
       {activeSection === "inventory" && <InventorySection canWrite />}
+      {activeSection === "users" && <UsersSection />}
       {activeSection === "reports" && <ReportsSection />}
     </DashboardLayout>
   );

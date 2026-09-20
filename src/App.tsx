@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Toaster } from "@/components/ui/sonner";
@@ -73,6 +74,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" richColors />
+      <Analytics />
     </AuthProvider>
   );
 }

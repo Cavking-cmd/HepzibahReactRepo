@@ -53,12 +53,12 @@ function isRefNode(node: unknown): node is { $id?: unknown; $values?: unknown } 
 const derefVisited = new WeakSet<object>();
 
 export function deRef<T>(node: T): T {
-  if (Array.isArray(node)) {
-    return node.map(deRef) as unknown as T;
-  }
   if (isRefNode(node)) {
     if (derefVisited.has(node)) return node;
     derefVisited.add(node);
+    if (Array.isArray(node)) {
+      return node.map(deRef) as unknown as T;
+    }
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(node)) {
       if (key === "$id") continue;

@@ -46,34 +46,37 @@ export function unwrap<T>(value: unknown): T[] {
   return [];
 }
 
-function isRefNode(node: unknown): node is { $id?: unknown; $values?: unknown } {
-  return !!node && typeof node === "object";
+export function deRef<T>(node: T): T {
+  return deRefNode(node, new WeakMap<object, unknown>()) as T;
 }
 
-const derefVisited = new WeakSet<object>();
+function deRefNode(node: unknown, visited: WeakMap<object, unknown>): unknown {
+  if (!node || typeof node !== "object") return node;
 
-export function deRef<T>(node: T): T {
-  if (isRefNode(node)) {
-    if (derefVisited.has(node)) return node;
-    derefVisited.add(node);
-    if (Array.isArray(node)) {
-      return node.map(deRef) as unknown as T;
-    }
-    const out: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(node)) {
-      if (key === "$id") continue;
-      out[key] = value;
-    }
-    if ("$values" in node) {
-      const arr = (node as { $values: unknown }).$values;
-      if (isRefNode(arr) && "$values" in arr) {
-        return deRef<unknown[]>(Array.isArray((arr as { $values: unknown }).$values) ? (arr as { $values: unknown[] }).$values : []) as unknown as T;
-      }
-      return deRef<unknown[]>(Array.isArray(arr) ? arr : []) as unknown as T;
-    }
-    return deRef(out) as unknown as T;
+  if (visited.has(node)) return visited.get(node);
+
+  if (Array.isArray(node)) {
+    const out: unknown[] = [];
+    visited.set(node, out);
+    for (const item of node) out.push(deRefNode(item, visited));
+    return out;
   }
-  return node;
+
+  if ("$values" in node) {
+    const out: unknown[] = [];
+    visited.set(node, out);
+    const values = deRefNode(node.$values, visited);
+    if (Array.isArray(values)) out.push(...values);
+    return out;
+  }
+
+  const out: Record<string, unknown> = {};
+  visited.set(node, out);
+  for (const [key, value] of Object.entries(node)) {
+    if (key === "$id") continue;
+    out[key] = deRefNode(value, visited);
+  }
+  return out;
 }
 
 export interface BaseResponse<T> {

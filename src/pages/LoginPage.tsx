@@ -17,8 +17,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [apiBaseInput, setApiBaseInput] = useState(getApiBase());
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -96,37 +94,6 @@ export default function LoginPage() {
                 {loading ? "Signing in…" : "Login"}
               </Button>
             </form>
-
-            <div className="mt-4">
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                onClick={() => setShowSettings((s) => !s)}
-              >
-                API server settings
-              </button>
-              {showSettings && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Input
-                    className="h-8 text-xs"
-                    value={apiBaseInput}
-                    onChange={(e) => setApiBaseInput(e.target.value)}
-                    placeholder="/api (blank = same origin)"
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      setApiBase(apiBaseInput || "");
-                      toast.success("API base URL saved.");
-                    }}
-                  >
-                    Save
-                  </Button>
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>

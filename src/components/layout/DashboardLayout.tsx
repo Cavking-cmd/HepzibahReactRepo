@@ -119,14 +119,15 @@ export function DashboardLayout({
       </Sidebar>
 
       <SidebarInset>
-        <header className="relative flex items-center justify-between gap-4 border-b px-4 py-3 bg-card/40 backdrop-blur-sm">
+          <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-border/70 bg-card/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
           <div className="flex items-center gap-2">
             <SidebarTrigger />
             <h1 className="font-semibold text-lg text-gradient-brand">{title}</h1>
             {readOnly && <Badge variant="secondary">Read-only</Badge>}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
+            <InstallApp className="hidden sm:inline-flex" />
             <div className="text-right hidden sm:block">
               <div className="text-sm font-medium leading-tight">{user?.email}</div>
               <div className="text-xs text-muted-foreground leading-tight">{roleLabel}</div>

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Settings, type LucideIcon } from "lucide-react";
 import churchLogo from "@/assets/church-logo.png";
+import { InstallApp } from "@/components/pwa/InstallApp";
 
 export interface NavSection {
   id: string;
@@ -82,7 +83,7 @@ export function DashboardLayout({
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="px-3 py-3 border-b border-sidebar-border">
+        <SidebarHeader className="px-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="brand-gradient flex items-center justify-center w-8 h-8 rounded-full shrink-0 overflow-hidden ring-2 ring-primary/30 shadow-md">
               <img src={churchLogo} alt="RCCG Hephzibah Parish" className="w-6 h-6 rounded-full object-contain bg-white p-0.5" />

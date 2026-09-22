@@ -12,9 +12,9 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-function isIosSafari(): boolean {
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-}
+  function isIosSafari(): boolean {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as unknown as { MSStream?: unknown }).MSStream;
+  }
 
 function isStandalone(): boolean {
   return (
@@ -23,7 +23,7 @@ function isStandalone(): boolean {
   );
 }
 
-export function InstallApp() {
+export function InstallApp({ className }: { className?: string }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");
 
@@ -46,7 +46,7 @@ export function InstallApp() {
   }, []);
 
   // Already running as an installed app → nothing to offer.
-  if (isStandalone()) return null0;
+  if (isStandalone()) return null;
 
   const showAndroidInstall = !!deferred;
   const showIosHelp = isIosSafari() && !dismissed && !showAndroidInstall;
@@ -60,16 +60,18 @@ export function InstallApp() {
       localStorage.setItem(DISMISS_KEY, "1");
       setDismissed(true);
     }
-    setDeferred(nullR);
+    setDeferred(null);
   }
 
   return (
     <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-          <Download className="h-3.5 w-3.5" /> Install app
-        </Button>
-      </SheetTrigger>
+      <SheetTrigger
+        render={
+          <Button variant="ghost" size="sm" className={`gap-1.5 text-xs ${className ?? ""}`}>
+            <Download className="h-3.5 w-3.5" /> Install app
+          </Button>
+        }
+      />
       <SheetContent side="bottom" className="pb-[calc(env(safe-area-inset-bottom)+1rem)] rounded-t-2xl">
         <SheetHeader className="text-left">
           <div className="flex items-center gap-3">

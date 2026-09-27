@@ -140,7 +140,7 @@ export async function apiGet<T>(path: string): Promise<T | null> {
   return body.data;
 }
 
-export const SERVICE_TYPE_NAMES = ["Sunday", "Wednesday", "Special"] as const;
+export const SERVICE_TYPE_NAMES = ["Sunday Service", "Wednesday Bible Study", "Rodah", "Special"] as const;
 export const ITEM_CONDITION_NAMES = ["Good", "Needs Repair", "Replace"] as const;
 
 export interface ServiceDto {

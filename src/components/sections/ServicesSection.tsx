@@ -37,6 +37,16 @@ interface ServicesSectionProps {
   canWrite: boolean;
 }
 
+const DAYS_OF_WEEK = [
+"Sunday",
+"Monday",
+"Tuesday",
+"Wednesday",
+"Thursday",
+"Friday",
+"Saturday",
+] as const;
+
 const emptyForm = {
   date: "",
   day: "",
@@ -190,10 +200,10 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Service" : "New Service"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="date">Date</Label>
+<form onSubmit={handleSubmit} className="space-y-3">
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="date">Date</Label>
                 <Input
                   id="date"
                   type="date"
@@ -202,16 +212,24 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="day">Day</Label>
-                <Input
-                  id="day"
-                  required
-                  value={form.day}
-                  onChange={(e) => setForm({ ...form, day: e.target.value })}
-                  placeholder="Sunday"
-                />
-              </div>
+<div className="space-y-1.5">
+<Label htmlFor="day">Day</Label>
+<Select
+value={form.day}
+onValueChange={(v) => setForm({ ...form, day: v as string })}
+>
+<SelectTrigger id="day" className="w-full">
+<SelectValue placeholder="Select a day" />
+</SelectTrigger>
+<SelectContent>
+{DAYS_OF_WEEK.map((day) => (
+<SelectItem key={day} value={day}>
+{day}
+</SelectItem>
+))}
+</SelectContent>
+</Select>
+</div>
             </div>
 
             <div className="space-y-1.5">
@@ -247,9 +265,9 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="preacher">Preacher</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="preacher">Preacher</Label>
                 <Input
                   id="preacher"
                   value={form.preacher}

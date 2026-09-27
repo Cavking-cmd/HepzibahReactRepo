@@ -5,8 +5,9 @@ import {
   type DemographicsDto,
   type FirstTimerConversionDto,
   type MonthlyGrowthDto,
-  type PreacherImpactDto,
-  type ServiceComparisonDto,
+type PreacherImpactDto,
+type ServiceComparisonDto,
+type ServiceTypeComparisonDto,
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +27,15 @@ import {
   YAxis,
 } from "recharts";
 
+const serviceTypeLabelMap: Record<string, string> = {
+SundayService: "Sunday Service",
+WednesdayBibleStudy: "Wednesday Bible Study",
+Rodah: "Rodah",
+Special: "Special",
+};
+
 const growthConfig = {
-  totalAttendance: { label: "Attendance", color: "var(--chart-1)" },
+totalAttendance: { label: "Attendance", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 const serviceTypeConfig = {
@@ -83,7 +91,12 @@ export function AttendanceReports() {
   }, []);
 
   const latestGrowth = growth && growth.length > 0 ? growth[growth.length - 1] : null;
-  const byServiceType = comparison ? unwrap(comparison.byServiceType) : [];
+  const byServiceType = comparison
+? unwrap<ServiceTypeComparisonDto>(comparison.byServiceType).map((row) => ({
+...row,
+serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
+}))
+: [];
   const onlineVsPhysical = comparison ? unwrap(comparison.onlineVsPhysicalByMonth) : [];
 
   const demographicsData = demographics
@@ -218,7 +231,7 @@ export function AttendanceReports() {
             {!conversion ? (
               <Skeleton className="h-40 w-full" />
             ) : (
-              <div className="grid grid-cols-3 gap-4 py-4 text-center">
+              <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
                 <div>
                   <div className="text-2xl font-semibold">{conversion.totalFirstTimers}</div>
                   <div className="text-xs text-muted-foreground mt-1">First Timers</div>

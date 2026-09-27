@@ -269,9 +269,9 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="men">Men</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="men">Men</Label>
                 <Input id="men" type="number" min={0} value={form.men} onChange={(e) => setForm({ ...form, men: e.target.value })} />
               </div>
               <div className="space-y-1.5">

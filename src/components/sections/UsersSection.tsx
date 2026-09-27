@@ -53,9 +53,9 @@ export function UsersSection() {
     setOpen(true);
   }
 
-  function toggleRole(role: string) {
-    setRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
-  }
+function toggleRole(role: string) {
+setRoles((prev) => (prev.includes(role) ? [] : [role]));
+}
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

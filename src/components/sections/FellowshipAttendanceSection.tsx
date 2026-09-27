@@ -268,9 +268,9 @@ export function FellowshipAttendanceSection({ canWrite, canApprove }: Fellowship
               <Input id="date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="men">Men</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="men">Men</Label>
                 <Input id="men" type="number" min={0} value={form.men} onChange={(e) => setForm({ ...form, men: e.target.value })} />
               </div>
               <div className="space-y-1.5">

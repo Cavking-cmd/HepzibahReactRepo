@@ -233,9 +233,9 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
               <Label htmlFor="serialNumber">Serial Number</Label>
               <Input id="serialNumber" value={form.serialNumber} onChange={(e) => setForm({ ...form, serialNumber: e.target.value })} placeholder="Optional" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="category">Category</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="category">Category</Label>
                 <Input id="category" required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
               </div>
               <div className="space-y-1.5">
@@ -262,9 +262,9 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="purchaseDate">Purchase Date</Label>
                 <Input id="purchaseDate" type="date" required value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
               </div>
               <div className="space-y-1.5">
@@ -272,9 +272,9 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
                 <Input id="value" type="number" min={0} step="0.01" required value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="custodian">Custodian</Label>
+<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+<div className="space-y-1.5">
+<Label htmlFor="custodian">Custodian</Label>
                 <Input id="custodian" required value={form.custodian} onChange={(e) => setForm({ ...form, custodian: e.target.value })} />
               </div>
               <div className="space-y-1.5">

@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   apiGet,
   unwrap,
   type DemographicsDto,
   type FirstTimerConversionDto,
   type MonthlyGrowthDto,
-type PreacherImpactDto,
-type ServiceComparisonDto,
-type ServiceTypeComparisonDto,
+  type OnlineVsPhysicalDto,
+  type PreacherImpactDto,
+  type ServiceComparisonDto,
+  type ServiceTypeComparisonDto,
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ChartDownloadMenu } from "@/components/charts/ChartDownloadMenu";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   Bar,
@@ -28,14 +30,14 @@ import {
 } from "recharts";
 
 const serviceTypeLabelMap: Record<string, string> = {
-SundayService: "Sunday Service",
-WednesdayBibleStudy: "Wednesday Bible Study",
-Rodah: "Rodah",
-Special: "Special",
+  SundayService: "Sunday Service",
+  WednesdayBibleStudy: "Wednesday Bible Study",
+  Rodah: "Rodah",
+  Special: "Special",
 };
 
 const growthConfig = {
-totalAttendance: { label: "Attendance", color: "var(--chart-1)" },
+  totalAttendance: { label: "Attendance", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 const serviceTypeConfig = {
@@ -63,6 +65,13 @@ export function AttendanceReports() {
   const [demographics, setDemographics] = useState<DemographicsDto | null>(null);
   const [conversion, setConversion] = useState<FirstTimerConversionDto | null>(null);
   const [preachers, setPreachers] = useState<PreacherImpactDto[] | null>(null);
+
+  const growthRef = useRef<HTMLDivElement | null>(null);
+  const serviceTypeRef = useRef<HTMLDivElement | null>(null);
+  const onlinePhysicalRef = useRef<HTMLDivElement | null>(null);
+  const demographicsRef = useRef<HTMLDivElement | null>(null);
+  const conversionRef = useRef<HTMLDivElement | null>(null);
+  const preacherRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,12 +101,12 @@ export function AttendanceReports() {
 
   const latestGrowth = growth && growth.length > 0 ? growth[growth.length - 1] : null;
   const byServiceType = comparison
-? unwrap<ServiceTypeComparisonDto>(comparison.byServiceType).map((row) => ({
-...row,
-serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
-}))
-: [];
-  const onlineVsPhysical = comparison ? unwrap(comparison.onlineVsPhysicalByMonth) : [];
+    ? unwrap<ServiceTypeComparisonDto>(comparison.byServiceType).map((row) => ({
+        ...row,
+        serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
+      }))
+    : [];
+  const onlineVsPhysical = comparison ? unwrap<OnlineVsPhysicalDto>(comparison.onlineVsPhysicalByMonth) : [];
 
   const demographicsData = demographics
     ? [
@@ -107,28 +116,65 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
       ]
     : [];
 
+  const growthCsvRows = [
+    ["Month", "Total Attendance", "% Change vs Prev. Month"],
+    ...(growth ?? []).map((g) => [g.monthLabel, g.totalAttendance, g.percentChangeFromPreviousMonth ?? "N/A"]),
+  ];
+
+  const serviceTypeCsvRows = [
+    ["Service Type", "Total Attendance", "Average Attendance", "Record Count"],
+    ...byServiceType.map((row) => [row.serviceType, row.totalAttendance, row.averageAttendance, row.recordCount]),
+  ];
+
+  const onlinePhysicalCsvRows = [
+    ["Month", "Online", "Physical"],
+    ...onlineVsPhysical.map((row) => [row.monthLabel, row.totalOnline, row.totalPhysical]),
+  ];
+
+  const demographicsCsvRows = [
+    ["Demographic", "Count"],
+    ...demographicsData.map((row) => [row.label, row.value]),
+  ];
+
+  const conversionCsvRows = conversion
+    ? [
+        ["Metric", "Value"],
+        ["First Timers", conversion.totalFirstTimers],
+        ["New Converts", conversion.totalNewConverts],
+        ["Conversion Rate (%)", conversion.conversionRatePercent.toFixed(1)],
+      ]
+    : [["Metric", "Value"]];
+
+  const preacherCsvRows = [
+    ["Preacher", "Total Attendance"],
+    ...(preachers ?? []).map((row) => [row.preacher, row.totalAttendance]),
+  ];
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Monthly Attendance Growth</CardTitle>
-          {latestGrowth && latestGrowth.percentChangeFromPreviousMonth !== null && (
-            <Badge
-              variant="outline"
-              className={
-                latestGrowth.percentChangeFromPreviousMonth < 0
-                  ? "text-red-600 border-red-200"
-                  : "text-green-600 border-green-200"
-              }
-            >
-              {latestGrowth.percentChangeFromPreviousMonth < 0 ? (
-                <ArrowDown className="h-3 w-3" />
-              ) : (
-                <ArrowUp className="h-3 w-3" />
-              )}
-              {latestGrowth.percentChangeFromPreviousMonth.toFixed(1)}% vs previous month
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {latestGrowth && latestGrowth.percentChangeFromPreviousMonth !== null && (
+              <Badge
+                variant="outline"
+                className={
+                  latestGrowth.percentChangeFromPreviousMonth < 0
+                    ? "text-red-600 border-red-200"
+                    : "text-green-600 border-green-200"
+                }
+              >
+                {latestGrowth.percentChangeFromPreviousMonth < 0 ? (
+                  <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUp className="h-3 w-3" />
+                )}
+                {latestGrowth.percentChangeFromPreviousMonth.toFixed(1)}% vs previous month
+              </Badge>
+            )}
+            <ChartDownloadMenu fileNameBase="monthly-attendance-growth" chartRef={growthRef} csvRows={growthCsvRows} />
+          </div>
         </CardHeader>
         <CardContent>
           {!growth ? (
@@ -136,23 +182,26 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
           ) : growth.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No attendance data yet.</p>
           ) : (
-            <ChartContainer config={growthConfig} className="h-64 w-full">
-              <BarChart data={growth}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} width={40} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-              </BarChart>
-            </ChartContainer>
+            <div ref={growthRef} className="w-full">
+              <ChartContainer config={growthConfig} className="h-64 w-full">
+                <BarChart data={growth}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Attendance by Service Type</CardTitle>
+            <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} />
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -160,22 +209,25 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
             ) : byServiceType.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">No service data yet.</p>
             ) : (
-              <ChartContainer config={serviceTypeConfig} className="h-56 w-full">
-                <BarChart data={byServiceType} layout="vertical">
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} width={70} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-                </BarChart>
-              </ChartContainer>
+              <div ref={serviceTypeRef} className="w-full">
+                <ChartContainer config={serviceTypeConfig} className="h-56 w-full">
+                  <BarChart data={byServiceType} layout="vertical">
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" tickLine={false} axisLine={false} />
+                    <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} width={70} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
+                  </BarChart>
+                </ChartContainer>
+              </div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Online vs Physical Attendance</CardTitle>
+            <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} />
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -183,17 +235,19 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
             ) : onlineVsPhysical.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">No data yet.</p>
             ) : (
-              <ChartContainer config={onlinePhysicalConfig} className="h-56 w-full">
-                <LineChart data={onlineVsPhysical}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={40} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Line type="monotone" dataKey="totalPhysical" stroke="var(--color-totalPhysical)" strokeWidth={2} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="totalOnline" stroke="var(--color-totalOnline)" strokeWidth={2} dot={{ r: 4 }} />
-                </LineChart>
-              </ChartContainer>
+              <div ref={onlinePhysicalRef} className="w-full">
+                <ChartContainer config={onlinePhysicalConfig} className="h-56 w-full">
+                  <LineChart data={onlineVsPhysical}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Line type="monotone" dataKey="totalPhysical" stroke="var(--color-totalPhysical)" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="totalOnline" stroke="var(--color-totalOnline)" strokeWidth={2} dot={{ r: 4 }} />
+                  </LineChart>
+                </ChartContainer>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -201,48 +255,54 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Demographics</CardTitle>
+            <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} />
           </CardHeader>
           <CardContent>
             {!demographics ? (
               <Skeleton className="h-56 w-full" />
             ) : (
-              <ChartContainer config={demographicsConfig} className="h-56 w-full">
-                <PieChart>
-                  <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
-                  <Pie data={demographicsData} dataKey="value" nameKey="label" innerRadius={50} outerRadius={80}>
-                    {demographicsData.map((entry) => (
-                      <Cell key={entry.key} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ChartLegend content={<ChartLegendContent nameKey="label" />} />
-                </PieChart>
-              </ChartContainer>
+              <div ref={demographicsRef} className="w-full">
+                <ChartContainer config={demographicsConfig} className="h-56 w-full">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
+                    <Pie data={demographicsData} dataKey="value" nameKey="label" innerRadius={50} outerRadius={80}>
+                      {demographicsData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <ChartLegend content={<ChartLegendContent nameKey="label" />} />
+                  </PieChart>
+                </ChartContainer>
+              </div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">First-Timer Conversion</CardTitle>
+            <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} />
           </CardHeader>
           <CardContent>
             {!conversion ? (
               <Skeleton className="h-40 w-full" />
             ) : (
-              <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
-                <div>
-                  <div className="text-2xl font-semibold">{conversion.totalFirstTimers}</div>
-                  <div className="text-xs text-muted-foreground mt-1">First Timers</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-semibold">{conversion.totalNewConverts}</div>
-                  <div className="text-xs text-muted-foreground mt-1">New Converts</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-semibold">{conversion.conversionRatePercent.toFixed(1)}%</div>
-                  <div className="text-xs text-muted-foreground mt-1">Conversion Rate</div>
+              <div ref={conversionRef} className="w-full">
+                <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
+                  <div>
+                    <div className="text-2xl font-semibold">{conversion.totalFirstTimers}</div>
+                    <div className="text-xs text-muted-foreground mt-1">First Timers</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold">{conversion.totalNewConverts}</div>
+                    <div className="text-xs text-muted-foreground mt-1">New Converts</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold">{conversion.conversionRatePercent.toFixed(1)}%</div>
+                    <div className="text-xs text-muted-foreground mt-1">Conversion Rate</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -251,8 +311,9 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Preacher Impact</CardTitle>
+          <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} />
         </CardHeader>
         <CardContent>
           {!preachers ? (
@@ -260,15 +321,17 @@ serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
           ) : preachers.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No preacher data yet.</p>
           ) : (
-            <ChartContainer config={preacherConfig} className="w-full" style={{ height: Math.max(160, preachers.length * 44) }}>
-              <BarChart data={preachers} layout="vertical" margin={{ left: 12 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis dataKey="preacher" type="category" tickLine={false} axisLine={false} width={110} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-              </BarChart>
-            </ChartContainer>
+            <div ref={preacherRef} className="w-full">
+              <ChartContainer config={preacherConfig} className="w-full" style={{ height: Math.max(160, preachers.length * 44) }}>
+                <BarChart data={preachers} layout="vertical" margin={{ left: 12 }}>
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" tickLine={false} axisLine={false} />
+                  <YAxis dataKey="preacher" type="category" tickLine={false} axisLine={false} width={110} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </div>
           )}
         </CardContent>
       </Card>

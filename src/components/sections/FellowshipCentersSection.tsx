@@ -30,7 +30,7 @@ interface FellowshipCentersSectionProps {
   canWrite: boolean;
 }
 
-const emptyForm = { centerName: "", zone: "", leaderName: "", location: "" };
+const emptyForm = { centerName: "", leaderName: "", location: "" };
 
 export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionProps) {
   const { items, loading, refresh } = useCrudList<FellowshipCenterDto>("/api/FellowshipCenter");
@@ -51,7 +51,6 @@ export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionP
     setEditing(center);
     setForm({
       centerName: center.centerName,
-      zone: center.zone,
       leaderName: center.leaderName,
       location: center.location,
     });
@@ -106,7 +105,6 @@ export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionP
             <TableHeader>
               <TableRow>
                 <TableHead>Center Name</TableHead>
-                <TableHead>Zone</TableHead>
                 <TableHead>Leader</TableHead>
                 <TableHead>Location</TableHead>
                 {canWrite && <TableHead className="text-right">Actions</TableHead>}
@@ -115,7 +113,7 @@ export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionP
             <TableBody>
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={canWrite ? 5 : 4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={canWrite ? 4 : 3} className="text-center text-muted-foreground py-8">
                     No fellowship centers yet.
                   </TableCell>
                 </TableRow>
@@ -123,7 +121,6 @@ export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionP
               {pageItems.map((center) => (
                 <TableRow key={center.id}>
                   <TableCell className="font-medium">{center.centerName}</TableCell>
-                  <TableCell>{center.zone}</TableCell>
                   <TableCell>{center.leaderName}</TableCell>
                   <TableCell>{center.location}</TableCell>
                   {canWrite && (
@@ -167,10 +164,6 @@ export function FellowshipCentersSection({ canWrite }: FellowshipCentersSectionP
                 value={form.centerName}
                 onChange={(e) => setForm({ ...form, centerName: e.target.value })}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="zone">Zone</Label>
-              <Input id="zone" required value={form.zone} onChange={(e) => setForm({ ...form, zone: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="leaderName">Leader Name</Label>

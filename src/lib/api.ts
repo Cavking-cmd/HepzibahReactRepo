@@ -173,7 +173,6 @@ export interface AttendanceDto {
 export interface FellowshipCenterDto {
   id: string;
   centerName: string;
-  zone: string;
   leaderName: string;
   location: string;
 }
@@ -293,17 +292,9 @@ export interface PreacherImpactDto {
 export interface CenterRankingDto {
   centerId: string;
   centerName: string;
-  zone: string;
   totalAttendance: number;
   averageAttendance: number;
   recordCount: number;
-}
-
-export interface ZoneSummaryDto {
-  zone: string;
-  totalAttendance: number;
-  centerCount: number;
-  averageAttendance: number;
 }
 
 export interface LeaderTrendDto {

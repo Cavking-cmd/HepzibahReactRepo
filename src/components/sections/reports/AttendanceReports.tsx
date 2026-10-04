@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { ChartDownloadMenu } from "@/components/charts/ChartDownloadMenu";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import {
   Bar,
@@ -116,39 +115,40 @@ export function AttendanceReports() {
       ]
     : [];
 
-  const growthCsvRows = [
-    ["Month", "Total Attendance", "% Change vs Prev. Month"],
-    ...(growth ?? []).map((g) => [g.monthLabel, g.totalAttendance, g.percentChangeFromPreviousMonth ?? "N/A"]),
-  ];
+  // Download shell disabled for now; see ChartDownloadMenu usages below to re-enable.
+  // const growthCsvRows = [
+  //   ["Month", "Total Attendance", "% Change vs Prev. Month"],
+  //   ...(growth ?? []).map((g) => [g.monthLabel, g.totalAttendance, g.percentChangeFromPreviousMonth ?? "N/A"]),
+  // ];
 
-  const serviceTypeCsvRows = [
-    ["Service Type", "Total Attendance", "Average Attendance", "Record Count"],
-    ...byServiceType.map((row) => [row.serviceType, row.totalAttendance, row.averageAttendance, row.recordCount]),
-  ];
+  // const serviceTypeCsvRows = [
+  //   ["Service Type", "Total Attendance", "Average Attendance", "Record Count"],
+  //   ...byServiceType.map((row) => [row.serviceType, row.totalAttendance, row.averageAttendance, row.recordCount]),
+  // ];
 
-  const onlinePhysicalCsvRows = [
-    ["Month", "Online", "Physical"],
-    ...onlineVsPhysical.map((row) => [row.monthLabel, row.totalOnline, row.totalPhysical]),
-  ];
+  // const onlinePhysicalCsvRows = [
+  //   ["Month", "Online", "Physical"],
+  //   ...onlineVsPhysical.map((row) => [row.monthLabel, row.totalOnline, row.totalPhysical]),
+  // ];
 
-  const demographicsCsvRows = [
-    ["Demographic", "Count"],
-    ...demographicsData.map((row) => [row.label, row.value]),
-  ];
+  // const demographicsCsvRows = [
+  //   ["Demographic", "Count"],
+  //   ...demographicsData.map((row) => [row.label, row.value]),
+  // ];
 
-  const conversionCsvRows = conversion
-    ? [
-        ["Metric", "Value"],
-        ["First Timers", conversion.totalFirstTimers],
-        ["New Converts", conversion.totalNewConverts],
-        ["Conversion Rate (%)", conversion.conversionRatePercent.toFixed(1)],
-      ]
-    : [["Metric", "Value"]];
+  // const conversionCsvRows = conversion
+  //   ? [
+  //       ["Metric", "Value"],
+  //       ["First Timers", conversion.totalFirstTimers],
+  //       ["New Converts", conversion.totalNewConverts],
+  //       ["Conversion Rate (%)", conversion.conversionRatePercent.toFixed(1)],
+  //     ]
+  //   : [["Metric", "Value"]];
 
-  const preacherCsvRows = [
-    ["Preacher", "Total Attendance"],
-    ...(preachers ?? []).map((row) => [row.preacher, row.totalAttendance]),
-  ];
+  // const preacherCsvRows = [
+  //   ["Preacher", "Total Attendance"],
+  //   ...(preachers ?? []).map((row) => [row.preacher, row.totalAttendance]),
+  // ];
 
   return (
     <div className="space-y-6">
@@ -173,7 +173,7 @@ export function AttendanceReports() {
                 {latestGrowth.percentChangeFromPreviousMonth.toFixed(1)}% vs previous month
               </Badge>
             )}
-            <ChartDownloadMenu fileNameBase="monthly-attendance-growth" chartRef={growthRef} csvRows={growthCsvRows} />
+            {/* <ChartDownloadMenu fileNameBase="monthly-attendance-growth" chartRef={growthRef} csvRows={growthCsvRows} /> */}
           </div>
         </CardHeader>
         <CardContent>
@@ -201,7 +201,7 @@ export function AttendanceReports() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Attendance by Service Type</CardTitle>
-            <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} />
+            {/* <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -227,7 +227,7 @@ export function AttendanceReports() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Online vs Physical Attendance</CardTitle>
-            <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} />
+            {/* <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -257,7 +257,7 @@ export function AttendanceReports() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Demographics</CardTitle>
-            <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} />
+            {/* <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!demographics ? (
@@ -283,7 +283,7 @@ export function AttendanceReports() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">First-Timer Conversion</CardTitle>
-            <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} />
+            {/* <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!conversion ? (
@@ -313,7 +313,7 @@ export function AttendanceReports() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Preacher Impact</CardTitle>
-          <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} />
+          {/* <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} /> */}
         </CardHeader>
         <CardContent>
           {!preachers ? (

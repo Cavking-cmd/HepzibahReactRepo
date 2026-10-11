@@ -435,4 +435,343 @@ export function AttendanceReports() {
                     fill="var(--color-totalAttendance)"
                     radius={4}
                   />
-                </
+                </BarChart>
+              </ChartContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Attendance by Service Type ({selectedLabel})
+            </CardTitle>
+            {/* <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} /> */}
+          </CardHeader>
+          <CardContent>
+            {!comparison ? (
+              <Skeleton className="h-56 w-full" />
+            ) : byServiceType.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No attendance recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <div ref={serviceTypeRef} className="w-full">
+                <ChartContainer
+                  config={serviceTypeConfig}
+                  className="h-56 w-full"
+                >
+                  <BarChart data={byServiceType} layout="vertical">
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" tickLine={false} axisLine={false} />
+                    <YAxis
+                      dataKey="serviceType"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                      width={70}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar
+                      dataKey="totalAttendance"
+                      fill="var(--color-totalAttendance)"
+                      radius={4}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Online vs Physical Attendance ({selectedLabel})
+            </CardTitle>
+            {/* <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} /> */}
+          </CardHeader>
+          <CardContent>
+            {!comparison ? (
+              <Skeleton className="h-56 w-full" />
+            ) : onlineVsPhysical.length === 0 ||
+              onlineVsPhysical.every(
+                (row) => row.totalOnline + row.totalPhysical === 0
+              ) ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No attendance recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <div ref={onlinePhysicalRef} className="w-full">
+                <ChartContainer
+                  config={onlinePhysicalConfig}
+                  className="h-56 w-full"
+                >
+                  <BarChart data={onlineVsPhysical}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="monthLabel"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis tickLine={false} axisLine={false} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar
+                      dataKey="totalPhysical"
+                      fill="var(--color-totalPhysical)"
+                      radius={4}
+                    />
+                    <Bar
+                      dataKey="totalOnline"
+                      fill="var(--color-totalOnline)"
+                      radius={4}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Attendance by Service ({selectedLabel})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!monthReport ? (
+              <Skeleton className="h-56 w-full" />
+            ) : monthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No services recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <ChartContainer
+                config={currentMonthTotalConfig}
+                className="h-56 w-full"
+              >
+                <BarChart data={monthServices}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                    fontSize={11}
+                  />
+                  <YAxis tickLine={false} axisLine={false} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="total"
+                    fill="var(--color-total)"
+                    radius={4}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Online vs Physical by Service ({selectedLabel})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!monthReport ? (
+              <Skeleton className="h-56 w-full" />
+            ) : monthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No services recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <ChartContainer
+                config={currentMonthOnlinePhysicalConfig}
+                className="h-56 w-full"
+              >
+                <BarChart data={monthServices}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                    fontSize={11}
+                  />
+                  <YAxis tickLine={false} axisLine={false} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar
+                    dataKey="physical"
+                    stackId="a"
+                    fill="var(--color-physical)"
+                    radius={4}
+                  />
+                  <Bar
+                    dataKey="online"
+                    stackId="a"
+                    fill="var(--color-online)"
+                    radius={4}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Demographics ({selectedLabel})
+            </CardTitle>
+            {/* <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} /> */}
+          </CardHeader>
+          <CardContent>
+            {!demographics ? (
+              <Skeleton className="h-56 w-full" />
+            ) : demographicsEmpty ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No attendance recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <div ref={demographicsRef} className="w-full">
+                <ChartContainer
+                  config={demographicsConfig}
+                  className="h-56 w-full"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      content={<ChartTooltipContent nameKey="label" />}
+                    />
+                    <Pie
+                      data={demographicsData}
+                      dataKey="value"
+                      nameKey="label"
+                      innerRadius={50}
+                      outerRadius={80}
+                    >
+                      {demographicsData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <ChartLegend content={<ChartLegendContent nameKey="label" />} />
+                  </PieChart>
+                </ChartContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              First-Timer Conversion ({selectedLabel})
+            </CardTitle>
+            {/* <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} /> */}
+          </CardHeader>
+          <CardContent>
+            {!conversion ? (
+              <Skeleton className="h-40 w-full" />
+            ) : conversion.totalFirstTimers === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No first-timers recorded in {selectedLabel} yet.
+              </p>
+            ) : (
+              <div ref={conversionRef} className="w-full">
+                <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
+                  <div>
+                    <div className="text-2xl font-semibold">
+                      {conversion.totalFirstTimers}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      First Timers
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold">
+                      {conversion.totalNewConverts}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      New Converts
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-semibold">
+                      {conversion.conversionRatePercent.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Conversion Rate
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-base">
+            Preacher Impact ({selectedLabel})
+          </CardTitle>
+          {/* <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} /> */}
+        </CardHeader>
+        <CardContent>
+          {!preachers ? (
+            <Skeleton className="h-48 w-full" />
+          ) : preachers.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              No preacher data for {selectedLabel} yet.
+            </p>
+          ) : (
+            <div ref={preacherRef} className="w-full">
+              <ChartContainer
+                config={preacherConfig}
+                className="w-full"
+                style={{ height: Math.max(160, preachers.length * 44) }}
+              >
+                <BarChart
+                  data={preachers}
+                  layout="vertical"
+                  margin={{ left: 12 }}
+                >
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" tickLine={false} axisLine={false} />
+                  <YAxis
+                    dataKey="preacher"
+                    type="category"
+                    tickLine={false}
+                    axisLine={false}
+                    width={110}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="totalAttendance"
+                    fill="var(--color-totalAttendance)"
+                    radius={4}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

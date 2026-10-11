@@ -16,8 +16,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Bar,
@@ -74,7 +87,10 @@ function monthKey(year: number, month: number) {
 }
 
 function monthLabelOf(year: number, month: number) {
-  return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function lastDayOfMonth(year: number, month: number) {
@@ -93,9 +109,12 @@ export function AttendanceReports() {
 
   const [growth, setGrowth] = useState<MonthlyGrowthDto[] | null>(null);
   const [comparison, setComparison] = useState<ServiceComparisonDto | null>(null);
-  const [monthReport, setMonthReport] = useState<MonthServiceAttendanceDto | null>(null);
+  const [monthReport, setMonthReport] =
+    useState<MonthServiceAttendanceDto | null>(null);
   const [demographics, setDemographics] = useState<DemographicsDto | null>(null);
-  const [conversion, setConversion] = useState<FirstTimerConversionDto | null>(null);
+  const [conversion, setConversion] = useState<FirstTimerConversionDto | null>(
+    null
+  );
   const [preachers, setPreachers] = useState<PreacherImpactDto[] | null>(null);
 
   const growthRef = useRef<HTMLDivElement | null>(null);
@@ -114,18 +133,42 @@ export function AttendanceReports() {
 
     async function load() {
       const startDate = `${selectedKey}-01`;
-      const endDate = `${selectedKey}-${String(lastDayOfMonth(selectedYear, selectedMonth)).padStart(2, "0")}T23:59:59`;
-      const [growthData, monthsData, comparisonData, monthData, demographicsData, conversionData, preacherData] = await Promise.all([
-        apiGet<MonthlyGrowthDto[]>("/api/Reports/Attendance/monthly-growth?months=12"),
+      const endDate = `${selectedKey}-${String(
+        lastDayOfMonth(selectedYear, selectedMonth)
+      ).padStart(2, "0")}T23:59:59`;
+
+      const [
+        growthData,
+        monthsData,
+        comparisonData,
+        monthData,
+        demographicsData,
+        conversionData,
+        preacherData,
+      ] = await Promise.all([
+        apiGet<MonthlyGrowthDto[]>(
+          "/api/Reports/Attendance/monthly-growth?months=12"
+        ),
         apiGet<MonthOptionDto[]>("/api/Reports/Attendance/available-months"),
-        apiGet<ServiceComparisonDto>(`/api/Reports/Attendance/service-comparison?month=${selectedKey}`),
-        apiGet<MonthServiceAttendanceDto>(`/api/Reports/Attendance/month-by-service?month=${selectedKey}`),
-        apiGet<DemographicsDto>(`/api/Reports/Attendance/demographics?startDate=${startDate}&endDate=${endDate}`),
-        apiGet<FirstTimerConversionDto>(`/api/Reports/Attendance/first-timer-conversion?month=${selectedKey}`),
-        apiGet<PreacherImpactDto[]>(`/api/Reports/Attendance/preacher-impact?month=${selectedKey}`),
+        apiGet<ServiceComparisonDto>(
+          `/api/Reports/Attendance/service-comparison?month=${selectedKey}`
+        ),
+        apiGet<MonthServiceAttendanceDto>(
+          `/api/Reports/Attendance/month-by-service?month=${selectedKey}`
+        ),
+        apiGet<DemographicsDto>(
+          `/api/Reports/Attendance/demographics?startDate=${startDate}&endDate=${endDate}`
+        ),
+        apiGet<FirstTimerConversionDto>(
+          `/api/Reports/Attendance/first-timer-conversion?month=${selectedKey}`
+        ),
+        apiGet<PreacherImpactDto[]>(
+          `/api/Reports/Attendance/preacher-impact?month=${selectedKey}`
+        ),
       ]);
 
       if (cancelled) return;
+
       setGrowth(growthData ? unwrap<MonthlyGrowthDto>(growthData) : []);
       setMonths(monthsData ? unwrap<MonthOptionDto>(monthsData) : []);
       setComparison(comparisonData);
@@ -136,6 +179,7 @@ export function AttendanceReports() {
     }
 
     load();
+
     return () => {
       cancelled = true;
     };
@@ -149,60 +193,112 @@ export function AttendanceReports() {
 
   function selectMonth(key: string | null) {
     if (!key) return;
+
     const [y, m] = key.split("-").map(Number);
     setSelectedYear(y);
     setSelectedMonth(m);
   }
 
-  const monthOptions = months.some((m) => m.year === selectedYear && m.month === selectedMonth)
+  const monthOptions = months.some(
+    (m) => m.year === selectedYear && m.month === selectedMonth
+  )
     ? months
-    : [{ year: selectedYear, month: selectedMonth, label: selectedLabel }, ...months];
+    : [
+        {
+          year: selectedYear,
+          month: selectedMonth,
+          label: selectedLabel,
+        },
+        ...months,
+      ];
 
-  const latestGrowth = growth && growth.length > 0 ? growth[growth.length - 1] : null;
+  const latestGrowth =
+    growth && growth.length > 0 ? growth[growth.length - 1] : null;
+
   const byServiceType = comparison
     ? unwrap<ServiceTypeComparisonDto>(comparison.byServiceType).map((row) => ({
         ...row,
         serviceType: serviceTypeLabelMap[row.serviceType] ?? row.serviceType,
       }))
     : [];
-  const onlineVsPhysical = comparison ? unwrap<OnlineVsPhysicalDto>(comparison.onlineVsPhysicalByMonth) : [];
+
+  const onlineVsPhysical = comparison
+    ? unwrap<OnlineVsPhysicalDto>(comparison.onlineVsPhysicalByMonth)
+    : [];
+
   const monthServices = monthReport?.services ?? [];
 
   const demographicsData = demographics
     ? [
-        { key: "men", label: "Men", value: demographics.totalMen, fill: "var(--chart-1)" },
-        { key: "women", label: "Women", value: demographics.totalWomen, fill: "var(--chart-2)" },
-        { key: "children", label: "Children", value: demographics.totalChildren, fill: "var(--chart-3)" },
+        {
+          key: "men",
+          label: "Men",
+          value: demographics.totalMen,
+          fill: "var(--chart-1)",
+        },
+        {
+          key: "women",
+          label: "Women",
+          value: demographics.totalWomen,
+          fill: "var(--chart-2)",
+        },
+        {
+          key: "children",
+          label: "Children",
+          value: demographics.totalChildren,
+          fill: "var(--chart-3)",
+        },
       ]
     : [];
+
   const demographicsEmpty =
-    demographics !== null && demographics.totalMen + demographics.totalWomen + demographics.totalChildren === 0;
-<<<<<<< HEAD
+    demographics !== null &&
+    demographics.totalMen +
+      demographics.totalWomen +
+      demographics.totalChildren ===
+      0;
 
   const monthHasData =
     monthServices.length > 0 ||
     byServiceType.length > 0 ||
-    onlineVsPhysical.some((row) => row.totalOnline + row.totalPhysical > 0) ||
+    onlineVsPhysical.some(
+      (row) => row.totalOnline + row.totalPhysical > 0
+    ) ||
     !demographicsEmpty;
-  const lastDataMonth = months.length > 0 ? months[months.length - 1] : null;
-  const showEmptyMonthHint = isCurrentMonth && !monthHasData && lastDataMonth !== null;
-=======
->>>>>>> 38452e357e76755915e3202ca276e6feaf92fb70
+
+  const lastDataMonth =
+    months.length > 0 ? months[months.length - 1] : null;
+
+  const showEmptyMonthHint =
+    isCurrentMonth && !monthHasData && lastDataMonth !== null;
 
   // Download shell disabled for now; see ChartDownloadMenu usages below to re-enable.
   // const growthCsvRows = [
   //   ["Month", "Total Attendance", "% Change vs Prev. Month"],
-  //   ...(growth ?? []).map((g) => [g.monthLabel, g.totalAttendance, g.percentChangeFromPreviousMonth ?? "N/A"]),
+  //   ...(growth ?? []).map((g) => [
+  //     g.monthLabel,
+  //     g.totalAttendance,
+  //     g.percentChangeFromPreviousMonth ?? "N/A",
+  //   ]),
   // ];
 
   // const serviceTypeCsvRows = [
   //   ["Service Type", "Total Attendance", "Average Attendance", "Record Count"],
-  //   ...byServiceType.map((row) => [row.serviceType, row.totalAttendance, row.averageAttendance, row.recordCount]),
+  //   ...byServiceType.map((row) => [
+  //     row.serviceType,
+  //     row.totalAttendance,
+  //     row.averageAttendance,
+  //     row.recordCount,
+  //   ]),
   // ];
 
   // const onlinePhysicalCsvRows = [
   //   ["Month", "Online", "Physical"],
-  //   ...onlineVsPhysical.map((row) => [row.monthLabel, row.totalOnline, row.totalPhysical]),
+  //   ...onlineVsPhysical.map((row) => [
+  //     row.monthLabel,
+  //     row.totalOnline,
+  //     row.totalPhysical,
+  //   ]),
   // ];
 
   // const demographicsCsvRows = [
@@ -228,300 +324,115 @@ export function AttendanceReports() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => stepMonth(-1)} aria-label="Previous month">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => stepMonth(-1)}
+            aria-label="Previous month"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
+
           <Select value={selectedKey} onValueChange={selectMonth}>
             <SelectTrigger className="w-[190px]">
               <SelectValue placeholder={selectedLabel} />
             </SelectTrigger>
             <SelectContent>
               {monthOptions.map((m) => (
-                <SelectItem key={monthKey(m.year, m.month)} value={monthKey(m.year, m.month)}>
+                <SelectItem
+                  key={monthKey(m.year, m.month)}
+                  value={monthKey(m.year, m.month)}
+                >
                   {m.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => stepMonth(1)} aria-label="Next month" disabled={isCurrentMonth}>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => stepMonth(1)}
+            aria-label="Next month"
+            disabled={isCurrentMonth}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
         <div className="flex items-center gap-2 text-sm">
           <span className="font-medium">{selectedLabel}</span>
           {isCurrentMonth && <Badge variant="outline">Current Month</Badge>}
         </div>
       </div>
 
-<<<<<<< HEAD
       {showEmptyMonthHint && lastDataMonth && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-3 text-sm">
           <p className="text-muted-foreground">
-            No attendance recorded in {selectedLabel} yet. Past months with data are ready to view.
+            No attendance recorded in {selectedLabel} yet. Past months with
+            data are ready to view.
           </p>
-          <Button variant="outline" size="sm" onClick={() => selectMonth(monthKey(lastDataMonth.year, lastDataMonth.month))}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              selectMonth(monthKey(lastDataMonth.year, lastDataMonth.month))
+            }
+          >
             View {lastDataMonth.label}
           </Button>
         </div>
       )}
 
-=======
->>>>>>> 38452e357e76755915e3202ca276e6feaf92fb70
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Monthly Attendance Growth</CardTitle>
           <div className="flex items-center gap-2">
-            {latestGrowth && latestGrowth.percentChangeFromPreviousMonth !== null && (
-              <Badge
-                variant="outline"
-                className={
-                  latestGrowth.percentChangeFromPreviousMonth < 0
-                    ? "text-red-600 border-red-200"
-                    : "text-green-600 border-green-200"
-                }
-              >
-                {latestGrowth.percentChangeFromPreviousMonth < 0 ? (
-                  <ArrowDown className="h-3 w-3" />
-                ) : (
-                  <ArrowUp className="h-3 w-3" />
-                )}
-                {latestGrowth.percentChangeFromPreviousMonth.toFixed(1)}% vs previous month
-              </Badge>
-            )}
+            {latestGrowth &&
+              latestGrowth.percentChangeFromPreviousMonth !== null && (
+                <Badge
+                  variant="outline"
+                  className={
+                    latestGrowth.percentChangeFromPreviousMonth < 0
+                      ? "text-red-600 border-red-200"
+                      : "text-green-600 border-green-200"
+                  }
+                >
+                  {latestGrowth.percentChangeFromPreviousMonth < 0 ? (
+                    <ArrowDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUp className="h-3 w-3" />
+                  )}
+                  {latestGrowth.percentChangeFromPreviousMonth.toFixed(1)}% vs
+                  previous month
+                </Badge>
+              )}
             {/* <ChartDownloadMenu fileNameBase="monthly-attendance-growth" chartRef={growthRef} csvRows={growthCsvRows} /> */}
           </div>
         </CardHeader>
+
         <CardContent>
           {!growth ? (
             <Skeleton className="h-64 w-full" />
           ) : growth.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No attendance data yet.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              No attendance data yet.
+            </p>
           ) : (
             <div ref={growthRef} className="w-full">
               <ChartContainer config={growthConfig} className="h-64 w-full">
                 <BarChart data={growth}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={40} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Attendance by Service Type ({selectedLabel})</CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} /> */}
-          </CardHeader>
-          <CardContent>
-            {!comparison ? (
-              <Skeleton className="h-56 w-full" />
-            ) : byServiceType.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
-            ) : (
-              <div ref={serviceTypeRef} className="w-full">
-                <ChartContainer config={serviceTypeConfig} className="h-56 w-full">
-                  <BarChart data={byServiceType} layout="vertical">
-                    <CartesianGrid horizontal={false} />
-                    <XAxis type="number" tickLine={false} axisLine={false} />
-                    <YAxis dataKey="serviceType" type="category" tickLine={false} axisLine={false} width={70} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-                  </BarChart>
-                </ChartContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Online vs Physical Attendance ({selectedLabel})</CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} /> */}
-          </CardHeader>
-          <CardContent>
-            {!comparison ? (
-              <Skeleton className="h-56 w-full" />
-            ) : onlineVsPhysical.length === 0 || onlineVsPhysical.every((row) => row.totalOnline + row.totalPhysical === 0) ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
-            ) : (
-              <div ref={onlinePhysicalRef} className="w-full">
-                <ChartContainer config={onlinePhysicalConfig} className="h-56 w-full">
-                  <BarChart data={onlineVsPhysical}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
-                    <YAxis tickLine={false} axisLine={false} width={40} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Bar dataKey="totalPhysical" fill="var(--color-totalPhysical)" radius={4} />
-                    <Bar dataKey="totalOnline" fill="var(--color-totalOnline)" radius={4} />
-                  </BarChart>
-                </ChartContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Attendance by Service ({selectedLabel})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!monthReport ? (
-              <Skeleton className="h-56 w-full" />
-            ) : monthServices.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded in {selectedLabel} yet.</p>
-            ) : (
-              <ChartContainer config={currentMonthTotalConfig} className="h-56 w-full">
-                <BarChart data={monthServices}>
-                  <CartesianGrid vertical={false} />
                   <XAxis
-                    dataKey="label"
+                    dataKey="monthLabel"
                     tickLine={false}
                     axisLine={false}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={60}
-                    fontSize={11}
                   />
                   <YAxis tickLine={false} axisLine={false} width={40} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="total" fill="var(--color-total)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Online vs Physical by Service ({selectedLabel})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!monthReport ? (
-              <Skeleton className="h-56 w-full" />
-            ) : monthServices.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded in {selectedLabel} yet.</p>
-            ) : (
-              <ChartContainer config={currentMonthOnlinePhysicalConfig} className="h-56 w-full">
-                <BarChart data={monthServices}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={60}
-                    fontSize={11}
+                  <Bar
+                    dataKey="totalAttendance"
+                    fill="var(--color-totalAttendance)"
+                    radius={4}
                   />
-                  <YAxis tickLine={false} axisLine={false} width={40} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="physical" stackId="a" fill="var(--color-physical)" radius={4} />
-                  <Bar dataKey="online" stackId="a" fill="var(--color-online)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Demographics ({selectedLabel})</CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} /> */}
-          </CardHeader>
-          <CardContent>
-            {!demographics ? (
-              <Skeleton className="h-56 w-full" />
-            ) : demographicsEmpty ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
-            ) : (
-              <div ref={demographicsRef} className="w-full">
-                <ChartContainer config={demographicsConfig} className="h-56 w-full">
-                  <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent nameKey="label" />} />
-                    <Pie data={demographicsData} dataKey="value" nameKey="label" innerRadius={50} outerRadius={80}>
-                      {demographicsData.map((entry) => (
-                        <Cell key={entry.key} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartLegend content={<ChartLegendContent nameKey="label" />} />
-                  </PieChart>
-                </ChartContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">First-Timer Conversion ({selectedLabel})</CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} /> */}
-          </CardHeader>
-          <CardContent>
-            {!conversion ? (
-              <Skeleton className="h-40 w-full" />
-            ) : conversion.totalFirstTimers === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No first-timers recorded in {selectedLabel} yet.</p>
-            ) : (
-              <div ref={conversionRef} className="w-full">
-                <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
-                  <div>
-                    <div className="text-2xl font-semibold">{conversion.totalFirstTimers}</div>
-                    <div className="text-xs text-muted-foreground mt-1">First Timers</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold">{conversion.totalNewConverts}</div>
-                    <div className="text-xs text-muted-foreground mt-1">New Converts</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-semibold">{conversion.conversionRatePercent.toFixed(1)}%</div>
-                    <div className="text-xs text-muted-foreground mt-1">Conversion Rate</div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-base">Preacher Impact ({selectedLabel})</CardTitle>
-          {/* <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} /> */}
-        </CardHeader>
-        <CardContent>
-          {!preachers ? (
-            <Skeleton className="h-48 w-full" />
-          ) : preachers.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No preacher data for {selectedLabel} yet.</p>
-          ) : (
-            <div ref={preacherRef} className="w-full">
-              <ChartContainer config={preacherConfig} className="w-full" style={{ height: Math.max(160, preachers.length * 44) }}>
-                <BarChart data={preachers} layout="vertical" margin={{ left: 12 }}>
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" tickLine={false} axisLine={false} />
-                  <YAxis dataKey="preacher" type="category" tickLine={false} axisLine={false} width={110} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="totalAttendance" fill="var(--color-totalAttendance)" radius={4} />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+                </

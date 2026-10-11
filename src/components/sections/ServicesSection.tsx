@@ -54,7 +54,6 @@ const emptyForm = {
   theme: "",
   scriptureText: "",
   preacher: "",
-  onlineAttendance: "0",
 };
 
 export function ServicesSection({ canWrite }: ServicesSectionProps) {
@@ -81,7 +80,6 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
       theme: service.theme ?? "",
       scriptureText: service.scriptureText ?? "",
       preacher: service.preacher ?? "",
-      onlineAttendance: String(service.onlineAttendance),
     });
     setOpen(true);
   }
@@ -97,7 +95,6 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
       theme: form.theme || null,
       scriptureText: form.scriptureText || null,
       preacher: form.preacher || null,
-      onlineAttendance: Number(form.onlineAttendance) || 0,
     };
 
     const result = editing
@@ -148,14 +145,13 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                 <TableHead>Type</TableHead>
                 <TableHead>Theme</TableHead>
                 <TableHead>Preacher</TableHead>
-                <TableHead>Online</TableHead>
                 {canWrite && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={canWrite ? 7 : 6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={canWrite ? 6 : 5} className="text-center text-muted-foreground py-8">
                     No services yet.
                   </TableCell>
                 </TableRow>
@@ -167,7 +163,6 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                   <TableCell>{SERVICE_TYPE_NAMES[service.serviceType] ?? service.serviceType}</TableCell>
                   <TableCell>{service.theme ?? "-"}</TableCell>
                   <TableCell>{service.preacher ?? "-"}</TableCell>
-                  <TableCell>{service.onlineAttendance}</TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -265,25 +260,13 @@ onValueChange={(v) => setForm({ ...form, day: v as string })}
               />
             </div>
 
-<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-<div className="space-y-1.5">
-<Label htmlFor="preacher">Preacher</Label>
-                <Input
-                  id="preacher"
-                  value={form.preacher}
-                  onChange={(e) => setForm({ ...form, preacher: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="online">Online Attendance</Label>
-                <Input
-                  id="online"
-                  type="number"
-                  min={0}
-                  value={form.onlineAttendance}
-                  onChange={(e) => setForm({ ...form, onlineAttendance: e.target.value })}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="preacher">Preacher</Label>
+              <Input
+                id="preacher"
+                value={form.preacher}
+                onChange={(e) => setForm({ ...form, preacher: e.target.value })}
+              />
             </div>
 
             <DialogFooter>

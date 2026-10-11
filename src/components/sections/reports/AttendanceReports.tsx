@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   apiGet,
   unwrap,
+  type CurrentMonthServiceAttendanceDto,
   type DemographicsDto,
   type FirstTimerConversionDto,
   type MonthlyGrowthDto,
@@ -58,9 +59,19 @@ const preacherConfig = {
   totalAttendance: { label: "Total Attendance", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
+const currentMonthTotalConfig = {
+  total: { label: "Total Attendance", color: "var(--chart-1)" },
+} satisfies ChartConfig;
+
+const currentMonthOnlinePhysicalConfig = {
+  online: { label: "Online", color: "var(--chart-2)" },
+  physical: { label: "Physical", color: "var(--chart-1)" },
+} satisfies ChartConfig;
+
 export function AttendanceReports() {
   const [growth, setGrowth] = useState<MonthlyGrowthDto[] | null>(null);
   const [comparison, setComparison] = useState<ServiceComparisonDto | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<CurrentMonthServiceAttendanceDto | null>(null);
   const [demographics, setDemographics] = useState<DemographicsDto | null>(null);
   const [conversion, setConversion] = useState<FirstTimerConversionDto | null>(null);
   const [preachers, setPreachers] = useState<PreacherImpactDto[] | null>(null);
@@ -76,9 +87,10 @@ export function AttendanceReports() {
     let cancelled = false;
 
     async function load() {
-      const [growthData, comparisonData, demographicsData, conversionData, preacherData] = await Promise.all([
+      const [growthData, comparisonData, currentMonthData, demographicsData, conversionData, preacherData] = await Promise.all([
         apiGet<MonthlyGrowthDto[]>("/api/Reports/Attendance/monthly-growth?months=12"),
         apiGet<ServiceComparisonDto>("/api/Reports/Attendance/service-comparison"),
+        apiGet<CurrentMonthServiceAttendanceDto>("/api/Reports/Attendance/current-month-by-service"),
         apiGet<DemographicsDto>("/api/Reports/Attendance/demographics"),
         apiGet<FirstTimerConversionDto>("/api/Reports/Attendance/first-timer-conversion"),
         apiGet<PreacherImpactDto[]>("/api/Reports/Attendance/preacher-impact"),
@@ -87,6 +99,7 @@ export function AttendanceReports() {
       if (cancelled) return;
       setGrowth(growthData ? unwrap<MonthlyGrowthDto>(growthData) : []);
       setComparison(comparisonData);
+      setCurrentMonth(currentMonthData);
       setDemographics(demographicsData);
       setConversion(conversionData);
       setPreachers(preacherData ? unwrap<PreacherImpactDto>(preacherData) : []);
@@ -106,6 +119,7 @@ export function AttendanceReports() {
       }))
     : [];
   const onlineVsPhysical = comparison ? unwrap<OnlineVsPhysicalDto>(comparison.onlineVsPhysicalByMonth) : [];
+  const currentMonthServices = currentMonth?.services ?? [];
 
   const demographicsData = demographics
     ? [
@@ -248,6 +262,78 @@ export function AttendanceReports() {
                   </LineChart>
                 </ChartContainer>
               </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Attendance by Service{currentMonth ? ` (${currentMonth.monthLabel})` : ""}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!currentMonth ? (
+              <Skeleton className="h-56 w-full" />
+            ) : currentMonthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded this month yet.</p>
+            ) : (
+              <ChartContainer config={currentMonthTotalConfig} className="h-56 w-full">
+                <BarChart data={currentMonthServices}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                    fontSize={11}
+                  />
+                  <YAxis tickLine={false} axisLine={false} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="total" fill="var(--color-total)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">
+              Online vs Physical by Service{currentMonth ? ` (${currentMonth.monthLabel})` : ""}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!currentMonth ? (
+              <Skeleton className="h-56 w-full" />
+            ) : currentMonthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded this month yet.</p>
+            ) : (
+              <ChartContainer config={currentMonthOnlinePhysicalConfig} className="h-56 w-full">
+                <BarChart data={currentMonthServices}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-20}
+                    textAnchor="end"
+                    height={60}
+                    fontSize={11}
+                  />
+                  <YAxis tickLine={false} axisLine={false} width={40} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="physical" stackId="a" fill="var(--color-physical)" radius={4} />
+                  <Bar dataKey="online" stackId="a" fill="var(--color-online)" radius={4} />
+                </BarChart>
+              </ChartContainer>
             )}
           </CardContent>
         </Card>

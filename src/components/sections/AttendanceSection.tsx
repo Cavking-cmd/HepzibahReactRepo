@@ -47,6 +47,7 @@ const emptyForm = {
   sundaySchool: "0",
   newConverts: "0",
   firstTimers: "0",
+  onlineAttendance: "0",
 };
 
 export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionProps) {
@@ -80,6 +81,7 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
       sundaySchool: String(record.sundaySchool),
       newConverts: String(record.newConverts),
       firstTimers: String(record.firstTimers),
+      onlineAttendance: String(record.onlineAttendance),
     });
     setOpen(true);
   }
@@ -96,6 +98,7 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
       sundaySchool: Number(form.sundaySchool) || 0,
       newConverts: Number(form.newConverts) || 0,
       firstTimers: Number(form.firstTimers) || 0,
+      onlineAttendance: Number(form.onlineAttendance) || 0,
     };
 
     const result = editing
@@ -170,6 +173,7 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
                 <TableHead>Sunday School</TableHead>
                 <TableHead>New Converts</TableHead>
                 <TableHead>First Timers</TableHead>
+                <TableHead>Online</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
                 {showActionsCol && <TableHead className="text-right">Actions</TableHead>}
@@ -178,7 +182,7 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
             <TableBody>
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={showActionsCol ? 10 : 9} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={showActionsCol ? 11 : 10} className="text-center text-muted-foreground py-8">
                     No attendance records yet.
                   </TableCell>
                 </TableRow>
@@ -192,6 +196,7 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
                   <TableCell>{record.sundaySchool}</TableCell>
                   <TableCell>{record.newConverts}</TableCell>
                   <TableCell>{record.firstTimers}</TableCell>
+                  <TableCell>{record.onlineAttendance}</TableCell>
                   <TableCell className="font-medium">{record.total}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -293,6 +298,10 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
               <div className="space-y-1.5">
                 <Label htmlFor="firstTimers">First Timers</Label>
                 <Input id="firstTimers" type="number" min={0} value={form.firstTimers} onChange={(e) => setForm({ ...form, firstTimers: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="onlineAttendance">Online</Label>
+                <Input id="onlineAttendance" type="number" min={0} value={form.onlineAttendance} onChange={(e) => setForm({ ...form, onlineAttendance: e.target.value })} />
               </div>
             </div>
 

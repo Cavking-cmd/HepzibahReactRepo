@@ -151,7 +151,6 @@ export interface ServiceDto {
   theme: string | null;
   scriptureText: string | null;
   preacher: string | null;
-  onlineAttendance: number;
 }
 
 export interface AttendanceDto {
@@ -163,6 +162,7 @@ export interface AttendanceDto {
   sundaySchool: number;
   newConverts: number;
   firstTimers: number;
+  onlineAttendance: number;
   total: number;
   isApproved: boolean;
   isLocked: boolean;
@@ -212,7 +212,7 @@ export type UpdateServiceRequest = ServiceDto;
 
 export type CreateAttendanceRequest = Pick<
   AttendanceDto,
-  "serviceId" | "men" | "women" | "children" | "sundaySchool" | "newConverts" | "firstTimers"
+  "serviceId" | "men" | "women" | "children" | "sundaySchool" | "newConverts" | "firstTimers" | "onlineAttendance"
 >;
 export type UpdateAttendanceRequest = CreateAttendanceRequest & { id: string };
 
@@ -268,6 +268,23 @@ export interface OnlineVsPhysicalDto {
 export interface ServiceComparisonDto {
   byServiceType: ServiceTypeComparisonDto[];
   onlineVsPhysicalByMonth: OnlineVsPhysicalDto[];
+}
+
+export interface ServiceMonthAttendanceDto {
+  serviceId: string;
+  date: string;
+  label: string;
+  serviceType: string;
+  total: number;
+  online: number;
+  physical: number;
+}
+
+export interface CurrentMonthServiceAttendanceDto {
+  year: number;
+  month: number;
+  monthLabel: string;
+  services: ServiceMonthAttendanceDto[];
 }
 
 export interface DemographicsDto {

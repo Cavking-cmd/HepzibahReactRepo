@@ -186,7 +186,7 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
                       {ITEM_CONDITION_NAMES[item.condition] ?? item.condition}
                     </Badge>
                   </TableCell>
-                  <TableCell>{item.value.toLocaleString(undefined, { style: "currency", currency: "USD" })}</TableCell>
+                  <TableCell>{item.value.toLocaleString(undefined, { style: "currency", currency: "CAD" })}</TableCell>
                   <TableCell>{item.custodian}</TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
@@ -268,7 +268,7 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
                 <Input id="purchaseDate" type="date" required value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="value">Value ($)</Label>
+                <Label htmlFor="value">Value (CAD)</Label>
                 <Input id="value" type="number" min={0} step="0.01" required value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
               </div>
             </div>

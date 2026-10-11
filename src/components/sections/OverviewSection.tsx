@@ -45,7 +45,7 @@ export function OverviewSection({ onNavigate }: OverviewSectionProps) {
       label: "Total Asset Value",
       value: summary?.totalAssetValue ?? 0,
       icon: Wallet,
-      formatter: (n: number) => n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }),
+      formatter: (n: number) => n.toLocaleString(undefined, { style: "currency", currency: "CAD", maximumFractionDigits: 0 }),
     },
   ];
 

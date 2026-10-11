@@ -22,7 +22,7 @@ const valuationConfig = {
   totalValue: { label: "Total Value", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-const currency = (n: number) => n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const currency = (n: number) => n.toLocaleString(undefined, { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
 
 export function InventoryReports() {
   const [valuation, setValuation] = useState<InventoryValuationDto | null>(null);

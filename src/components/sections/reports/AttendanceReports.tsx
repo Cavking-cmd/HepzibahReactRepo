@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   apiGet,
   unwrap,
-  type CurrentMonthServiceAttendanceDto,
   type DemographicsDto,
   type FirstTimerConversionDto,
+  type MonthOptionDto,
   type MonthlyGrowthDto,
+  type MonthServiceAttendanceDto,
   type OnlineVsPhysicalDto,
   type PreacherImpactDto,
   type ServiceComparisonDto,
@@ -13,16 +14,16 @@ import {
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   XAxis,
@@ -68,10 +69,31 @@ const currentMonthOnlinePhysicalConfig = {
   physical: { label: "Physical", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
+function monthKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function monthLabelOf(year: number, month: number) {
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function lastDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
 export function AttendanceReports() {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonthNum = today.getMonth() + 1;
+  const currentKey = monthKey(currentYear, currentMonthNum);
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthNum);
+  const [months, setMonths] = useState<MonthOptionDto[]>([]);
+
   const [growth, setGrowth] = useState<MonthlyGrowthDto[] | null>(null);
   const [comparison, setComparison] = useState<ServiceComparisonDto | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<CurrentMonthServiceAttendanceDto | null>(null);
+  const [monthReport, setMonthReport] = useState<MonthServiceAttendanceDto | null>(null);
   const [demographics, setDemographics] = useState<DemographicsDto | null>(null);
   const [conversion, setConversion] = useState<FirstTimerConversionDto | null>(null);
   const [preachers, setPreachers] = useState<PreacherImpactDto[] | null>(null);
@@ -83,23 +105,31 @@ export function AttendanceReports() {
   const conversionRef = useRef<HTMLDivElement | null>(null);
   const preacherRef = useRef<HTMLDivElement | null>(null);
 
+  const selectedKey = monthKey(selectedYear, selectedMonth);
+  const selectedLabel = monthLabelOf(selectedYear, selectedMonth);
+  const isCurrentMonth = selectedKey === currentKey;
+
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const [growthData, comparisonData, currentMonthData, demographicsData, conversionData, preacherData] = await Promise.all([
+      const startDate = `${selectedKey}-01`;
+      const endDate = `${selectedKey}-${String(lastDayOfMonth(selectedYear, selectedMonth)).padStart(2, "0")}T23:59:59`;
+      const [growthData, monthsData, comparisonData, monthData, demographicsData, conversionData, preacherData] = await Promise.all([
         apiGet<MonthlyGrowthDto[]>("/api/Reports/Attendance/monthly-growth?months=12"),
-        apiGet<ServiceComparisonDto>("/api/Reports/Attendance/service-comparison"),
-        apiGet<CurrentMonthServiceAttendanceDto>("/api/Reports/Attendance/current-month-by-service"),
-        apiGet<DemographicsDto>("/api/Reports/Attendance/demographics"),
-        apiGet<FirstTimerConversionDto>("/api/Reports/Attendance/first-timer-conversion"),
-        apiGet<PreacherImpactDto[]>("/api/Reports/Attendance/preacher-impact"),
+        apiGet<MonthOptionDto[]>("/api/Reports/Attendance/available-months"),
+        apiGet<ServiceComparisonDto>(`/api/Reports/Attendance/service-comparison?month=${selectedKey}`),
+        apiGet<MonthServiceAttendanceDto>(`/api/Reports/Attendance/month-by-service?month=${selectedKey}`),
+        apiGet<DemographicsDto>(`/api/Reports/Attendance/demographics?startDate=${startDate}&endDate=${endDate}`),
+        apiGet<FirstTimerConversionDto>(`/api/Reports/Attendance/first-timer-conversion?month=${selectedKey}`),
+        apiGet<PreacherImpactDto[]>(`/api/Reports/Attendance/preacher-impact?month=${selectedKey}`),
       ]);
 
       if (cancelled) return;
       setGrowth(growthData ? unwrap<MonthlyGrowthDto>(growthData) : []);
+      setMonths(monthsData ? unwrap<MonthOptionDto>(monthsData) : []);
       setComparison(comparisonData);
-      setCurrentMonth(currentMonthData);
+      setMonthReport(monthData);
       setDemographics(demographicsData);
       setConversion(conversionData);
       setPreachers(preacherData ? unwrap<PreacherImpactDto>(preacherData) : []);
@@ -109,7 +139,24 @@ export function AttendanceReports() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedYear, selectedMonth, selectedKey]);
+
+  function stepMonth(delta: number) {
+    const d = new Date(selectedYear, selectedMonth - 1 + delta, 1);
+    setSelectedYear(d.getFullYear());
+    setSelectedMonth(d.getMonth() + 1);
+  }
+
+  function selectMonth(key: string | null) {
+    if (!key) return;
+    const [y, m] = key.split("-").map(Number);
+    setSelectedYear(y);
+    setSelectedMonth(m);
+  }
+
+  const monthOptions = months.some((m) => m.year === selectedYear && m.month === selectedMonth)
+    ? months
+    : [{ year: selectedYear, month: selectedMonth, label: selectedLabel }, ...months];
 
   const latestGrowth = growth && growth.length > 0 ? growth[growth.length - 1] : null;
   const byServiceType = comparison
@@ -119,7 +166,7 @@ export function AttendanceReports() {
       }))
     : [];
   const onlineVsPhysical = comparison ? unwrap<OnlineVsPhysicalDto>(comparison.onlineVsPhysicalByMonth) : [];
-  const currentMonthServices = currentMonth?.services ?? [];
+  const monthServices = monthReport?.services ?? [];
 
   const demographicsData = demographics
     ? [
@@ -128,6 +175,8 @@ export function AttendanceReports() {
         { key: "children", label: "Children", value: demographics.totalChildren, fill: "var(--chart-3)" },
       ]
     : [];
+  const demographicsEmpty =
+    demographics !== null && demographics.totalMen + demographics.totalWomen + demographics.totalChildren === 0;
 
   // Download shell disabled for now; see ChartDownloadMenu usages below to re-enable.
   // const growthCsvRows = [
@@ -166,6 +215,33 @@ export function AttendanceReports() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-3">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => stepMonth(-1)} aria-label="Previous month">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Select value={selectedKey} onValueChange={selectMonth}>
+            <SelectTrigger className="w-[190px]">
+              <SelectValue placeholder={selectedLabel} />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((m) => (
+                <SelectItem key={monthKey(m.year, m.month)} value={monthKey(m.year, m.month)}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" onClick={() => stepMonth(1)} aria-label="Next month" disabled={isCurrentMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium">{selectedLabel}</span>
+          {isCurrentMonth && <Badge variant="outline">Current Month</Badge>}
+        </div>
+      </div>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Monthly Attendance Growth</CardTitle>
@@ -214,14 +290,14 @@ export function AttendanceReports() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Attendance by Service Type</CardTitle>
+            <CardTitle className="text-base">Attendance by Service Type ({selectedLabel})</CardTitle>
             {/* <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
               <Skeleton className="h-56 w-full" />
             ) : byServiceType.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No service data yet.</p>
+              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
             ) : (
               <div ref={serviceTypeRef} className="w-full">
                 <ChartContainer config={serviceTypeConfig} className="h-56 w-full">
@@ -240,26 +316,26 @@ export function AttendanceReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Online vs Physical Attendance</CardTitle>
+            <CardTitle className="text-base">Online vs Physical Attendance ({selectedLabel})</CardTitle>
             {/* <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
               <Skeleton className="h-56 w-full" />
-            ) : onlineVsPhysical.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No data yet.</p>
+            ) : onlineVsPhysical.length === 0 || onlineVsPhysical.every((row) => row.totalOnline + row.totalPhysical === 0) ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
             ) : (
               <div ref={onlinePhysicalRef} className="w-full">
                 <ChartContainer config={onlinePhysicalConfig} className="h-56 w-full">
-                  <LineChart data={onlineVsPhysical}>
+                  <BarChart data={onlineVsPhysical}>
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
                     <YAxis tickLine={false} axisLine={false} width={40} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <ChartLegend content={<ChartLegendContent />} />
-                    <Line type="monotone" dataKey="totalPhysical" stroke="var(--color-totalPhysical)" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="totalOnline" stroke="var(--color-totalOnline)" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
+                    <Bar dataKey="totalPhysical" fill="var(--color-totalPhysical)" radius={4} />
+                    <Bar dataKey="totalOnline" fill="var(--color-totalOnline)" radius={4} />
+                  </BarChart>
                 </ChartContainer>
               </div>
             )}
@@ -270,18 +346,16 @@ export function AttendanceReports() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">
-              Attendance by Service{currentMonth ? ` (${currentMonth.monthLabel})` : ""}
-            </CardTitle>
+            <CardTitle className="text-base">Attendance by Service ({selectedLabel})</CardTitle>
           </CardHeader>
           <CardContent>
-            {!currentMonth ? (
+            {!monthReport ? (
               <Skeleton className="h-56 w-full" />
-            ) : currentMonthServices.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded this month yet.</p>
+            ) : monthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded in {selectedLabel} yet.</p>
             ) : (
               <ChartContainer config={currentMonthTotalConfig} className="h-56 w-full">
-                <BarChart data={currentMonthServices}>
+                <BarChart data={monthServices}>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -304,18 +378,16 @@ export function AttendanceReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">
-              Online vs Physical by Service{currentMonth ? ` (${currentMonth.monthLabel})` : ""}
-            </CardTitle>
+            <CardTitle className="text-base">Online vs Physical by Service ({selectedLabel})</CardTitle>
           </CardHeader>
           <CardContent>
-            {!currentMonth ? (
+            {!monthReport ? (
               <Skeleton className="h-56 w-full" />
-            ) : currentMonthServices.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded this month yet.</p>
+            ) : monthServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No services recorded in {selectedLabel} yet.</p>
             ) : (
               <ChartContainer config={currentMonthOnlinePhysicalConfig} className="h-56 w-full">
-                <BarChart data={currentMonthServices}>
+                <BarChart data={monthServices}>
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -342,12 +414,14 @@ export function AttendanceReports() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">Demographics</CardTitle>
+            <CardTitle className="text-base">Demographics ({selectedLabel})</CardTitle>
             {/* <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!demographics ? (
               <Skeleton className="h-56 w-full" />
+            ) : demographicsEmpty ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No attendance recorded in {selectedLabel} yet.</p>
             ) : (
               <div ref={demographicsRef} className="w-full">
                 <ChartContainer config={demographicsConfig} className="h-56 w-full">
@@ -368,12 +442,14 @@ export function AttendanceReports() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">First-Timer Conversion</CardTitle>
+            <CardTitle className="text-base">First-Timer Conversion ({selectedLabel})</CardTitle>
             {/* <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!conversion ? (
               <Skeleton className="h-40 w-full" />
+            ) : conversion.totalFirstTimers === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No first-timers recorded in {selectedLabel} yet.</p>
             ) : (
               <div ref={conversionRef} className="w-full">
                 <div className="grid grid-cols-1 gap-4 py-4 text-center sm:grid-cols-3">
@@ -398,14 +474,14 @@ export function AttendanceReports() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-base">Preacher Impact</CardTitle>
+          <CardTitle className="text-base">Preacher Impact ({selectedLabel})</CardTitle>
           {/* <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} /> */}
         </CardHeader>
         <CardContent>
           {!preachers ? (
             <Skeleton className="h-48 w-full" />
           ) : preachers.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No preacher data yet.</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No preacher data for {selectedLabel} yet.</p>
           ) : (
             <div ref={preacherRef} className="w-full">
               <ChartContainer config={preacherConfig} className="w-full" style={{ height: Math.max(160, preachers.length * 44) }}>

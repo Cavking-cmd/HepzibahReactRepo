@@ -177,6 +177,7 @@ export function AttendanceReports() {
     : [];
   const demographicsEmpty =
     demographics !== null && demographics.totalMen + demographics.totalWomen + demographics.totalChildren === 0;
+<<<<<<< HEAD
 
   const monthHasData =
     monthServices.length > 0 ||
@@ -185,6 +186,8 @@ export function AttendanceReports() {
     !demographicsEmpty;
   const lastDataMonth = months.length > 0 ? months[months.length - 1] : null;
   const showEmptyMonthHint = isCurrentMonth && !monthHasData && lastDataMonth !== null;
+=======
+>>>>>>> 38452e357e76755915e3202ca276e6feaf92fb70
 
   // Download shell disabled for now; see ChartDownloadMenu usages below to re-enable.
   // const growthCsvRows = [
@@ -250,6 +253,7 @@ export function AttendanceReports() {
         </div>
       </div>
 
+<<<<<<< HEAD
       {showEmptyMonthHint && lastDataMonth && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-3 text-sm">
           <p className="text-muted-foreground">
@@ -261,6 +265,8 @@ export function AttendanceReports() {
         </div>
       )}
 
+=======
+>>>>>>> 38452e357e76755915e3202ca276e6feaf92fb70
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base">Monthly Attendance Growth</CardTitle>

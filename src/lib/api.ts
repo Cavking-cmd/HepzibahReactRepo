@@ -280,11 +280,17 @@ export interface ServiceMonthAttendanceDto {
   physical: number;
 }
 
-export interface CurrentMonthServiceAttendanceDto {
+export interface MonthServiceAttendanceDto {
   year: number;
   month: number;
   monthLabel: string;
   services: ServiceMonthAttendanceDto[];
+}
+
+export interface MonthOptionDto {
+  year: number;
+  month: number;
+  label: string;
 }
 
 export interface DemographicsDto {

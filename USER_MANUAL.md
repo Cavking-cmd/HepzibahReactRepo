@@ -162,11 +162,16 @@ sign in with that email and password.
 ### Reports
 Charts and summaries drawn from live records, grouped into three tabs: **Attendance**,
 **Fellowship** and **Inventory**. Report content includes monthly attendance growth,
-attendance by service type, online vs physical attendance, attendance by service for the
-current month (both the total and a separate online-vs-physical breakdown), demographics,
-first-timer conversion, preacher impact, fellowship centre ranking, leader trends, expansion
-alerts, total inventory value, value by category, replacement alerts, and custodian
-accountability.
+attendance by service type, online vs physical attendance, attendance by service (both the
+total and a separate online-vs-physical breakdown), demographics, first-timer conversion,
+preacher impact, fellowship centre ranking, leader trends, expansion alerts, total inventory
+value, value by category, replacement alerts, and custodian accountability.
+
+The **Attendance** tab has a month selector (arrows plus a month list) at the top. Use it to
+browse any past month's charts: every chart below the growth overview is scoped to the month
+you pick. The **Monthly Attendance Growth** chart always stays as a 12-month overview across
+months. At the start of a new month only that overview has data; every other chart shows an
+empty "no data yet" message until services and attendance are recorded for the month.
 
 ---
 

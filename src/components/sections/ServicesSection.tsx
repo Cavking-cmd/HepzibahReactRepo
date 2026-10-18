@@ -56,6 +56,13 @@ const emptyForm = {
   preacher: "",
 };
 
+function dayFromDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  return DAYS_OF_WEEK[new Date(y, m - 1, d).getDay()];
+}
+
 export function ServicesSection({ canWrite }: ServicesSectionProps) {
   const { items, loading, refresh } = useCrudList<ServiceDto>("/api/Service");
   const { pageItems, page, pageSize, totalPages, changePage, changePageSize } = usePagination(items);

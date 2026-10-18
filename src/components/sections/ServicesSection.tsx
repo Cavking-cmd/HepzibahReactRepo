@@ -97,7 +97,7 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
 
     const payload = {
       date: form.date,
-      day: form.day,
+      day: form.day || dayFromDate(form.date),
       serviceType: Number(form.serviceType),
       theme: form.theme || null,
       scriptureText: form.scriptureText || null,
@@ -211,7 +211,13 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                   type="date"
                   required
                   value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      date: e.target.value,
+                      day: dayFromDate(e.target.value),
+                    })
+                  }
                 />
               </div>
 <div className="space-y-1.5">

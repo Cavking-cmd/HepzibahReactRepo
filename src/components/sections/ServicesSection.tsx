@@ -38,13 +38,13 @@ interface ServicesSectionProps {
 }
 
 const DAYS_OF_WEEK = [
-"Sunday",
-"Monday",
-"Tuesday",
-"Wednesday",
-"Thursday",
-"Friday",
-"Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ] as const;
 
 const emptyForm = {
@@ -65,7 +65,8 @@ function dayFromDate(dateStr: string): string {
 
 export function ServicesSection({ canWrite }: ServicesSectionProps) {
   const { items, loading, refresh } = useCrudList<ServiceDto>("/api/Service");
-  const { pageItems, page, pageSize, totalPages, changePage, changePageSize } = usePagination(items);
+  const { pageItems, page, pageSize, totalPages, changePage, changePageSize } =
+    usePagination(items);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceDto | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -91,6 +92,10 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
     setOpen(true);
   }
 
+  function handleDateChange(value: string) {
+    setForm((prev) => ({ ...prev, date: value, day: dayFromDate(value) }));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -105,7 +110,10 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
     };
 
     const result = editing
-      ? await apiRequest("PUT", `/api/Service/${editing.id}`, { id: editing.id, ...payload })
+      ? await apiRequest("PUT", `/api/Service/${editing.id}`, {
+          id: editing.id,
+          ...payload,
+        })
       : await apiRequest("POST", "/api/Service", payload);
 
     setSaving(false);
@@ -152,13 +160,18 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                 <TableHead>Type</TableHead>
                 <TableHead>Theme</TableHead>
                 <TableHead>Preacher</TableHead>
-                {canWrite && <TableHead className="text-right">Actions</TableHead>}
+                {canWrite && (
+                  <TableHead className="text-right">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={canWrite ? 6 : 5} className="text-center text-muted-foreground py-8">
+                  <TableCell
+                    colSpan={canWrite ? 6 : 5}
+                    className="text-center text-muted-foreground py-8"
+                  >
                     No services yet.
                   </TableCell>
                 </TableRow>
@@ -167,16 +180,27 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                 <TableRow key={service.id}>
                   <TableCell>{service.date.slice(0, 10)}</TableCell>
                   <TableCell>{service.day}</TableCell>
-                  <TableCell>{SERVICE_TYPE_NAMES[service.serviceType] ?? service.serviceType}</TableCell>
+                  <TableCell>
+                    {SERVICE_TYPE_NAMES[service.serviceType] ??
+                      service.serviceType}
+                  </TableCell>
                   <TableCell>{service.theme ?? "-"}</TableCell>
                   <TableCell>{service.preacher ?? "-"}</TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon-sm" onClick={() => openEdit(service)}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEdit(service)}
+                        >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(service)}>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setDeleteTarget(service)}
+                        >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </div>
@@ -200,54 +224,56 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Service" : "New Service"}</DialogTitle>
+            <DialogTitle>
+              {editing ? "Edit Service" : "New Service"}
+            </DialogTitle>
           </DialogHeader>
-<form onSubmit={handleSubmit} className="space-y-3">
-<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-<div className="space-y-1.5">
-<Label htmlFor="date">Date</Label>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="date">Date</Label>
                 <Input
                   id="date"
                   type="date"
                   required
                   value={form.date}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      date: e.target.value,
-                      day: dayFromDate(e.target.value),
-                    })
-                  }
+                  onChange={(e) => handleDateChange(e.target.value)}
                 />
               </div>
-<div className="space-y-1.5">
-<Label htmlFor="day">Day</Label>
-<Select
-value={form.day}
-onValueChange={(v) => setForm({ ...form, day: v as string })}
->
-<SelectTrigger id="day" className="w-full">
-<SelectValue placeholder="Select a day" />
-</SelectTrigger>
-<SelectContent>
-{DAYS_OF_WEEK.map((day) => (
-<SelectItem key={day} value={day}>
-{day}
-</SelectItem>
-))}
-</SelectContent>
-</Select>
-</div>
+              <div className="space-y-1.5">
+                <Label htmlFor="day">Day</Label>
+                <Select
+                  value={form.day}
+                  onValueChange={(v) =>
+                    setForm({ ...form, day: v as string })
+                  }
+                >
+                  <SelectTrigger id="day" className="w-full">
+                    <SelectValue placeholder="Select a day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS_OF_WEEK.map((day) => (
+                      <SelectItem key={day} value={day}>
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-1.5">
               <Label>Service Type</Label>
               <Select
                 value={form.serviceType}
-                onValueChange={(v) => setForm({ ...form, serviceType: v as string })}
+                onValueChange={(v) =>
+                  setForm({ ...form, serviceType: v as string })
+                }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue>{SERVICE_TYPE_NAMES[Number(form.serviceType)]}</SelectValue>
+                  <SelectValue>
+                    {SERVICE_TYPE_NAMES[Number(form.serviceType)]}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {SERVICE_TYPE_NAMES.map((name, idx) => (
@@ -261,7 +287,11 @@ onValueChange={(v) => setForm({ ...form, day: v as string })}
 
             <div className="space-y-1.5">
               <Label htmlFor="theme">Theme</Label>
-              <Input id="theme" value={form.theme} onChange={(e) => setForm({ ...form, theme: e.target.value })} />
+              <Input
+                id="theme"
+                value={form.theme}
+                onChange={(e) => setForm({ ...form, theme: e.target.value })}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -269,7 +299,9 @@ onValueChange={(v) => setForm({ ...form, day: v as string })}
               <Input
                 id="scripture"
                 value={form.scriptureText}
-                onChange={(e) => setForm({ ...form, scriptureText: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, scriptureText: e.target.value })
+                }
               />
             </div>
 
@@ -278,13 +310,19 @@ onValueChange={(v) => setForm({ ...form, day: v as string })}
               <Input
                 id="preacher"
                 value={form.preacher}
-                onChange={(e) => setForm({ ...form, preacher: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, preacher: e.target.value })
+                }
               />
             </div>
 
             <DialogFooter>
               <Button type="submit" disabled={saving}>
-                {saving ? "Saving…" : editing ? "Save Changes" : "Create Service"}
+                {saving
+                  ? "Saving…"
+                  : editing
+                    ? "Save Changes"
+                    : "Create Service"}
               </Button>
             </DialogFooter>
           </form>

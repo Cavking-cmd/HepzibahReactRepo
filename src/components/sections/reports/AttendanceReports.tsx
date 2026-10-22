@@ -45,16 +45,7 @@ import {
   ImageDown,
   Loader2,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { downloadImagePdf, downloadTablePdf } from "@/lib/pdf";
 import { captureElementAsJpeg } from "@/lib/export";
 import {
@@ -67,6 +58,13 @@ import { formatReportDate } from "@/lib/report-format";
 const serviceTypeLabelMap: Record<string, string> = {
   SundayService: "Sunday Service",
   WednesdayBibleStudy: "Wednesday Bible Study",
+  Rodah: "Rodah",
+  Special: "Special",
+};
+
+const serviceTypeShortMap: Record<string, string> = {
+  "Sunday Service": "Sunday",
+  "Wednesday Bible Study": "Bible Study",
   Rodah: "Rodah",
   Special: "Special",
 };
@@ -84,7 +82,14 @@ const onlinePhysicalConfig = {
   totalPhysical: { label: "Physical", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-const demographicsConfig = {
+const serviceBreakdownConfig = {
+  men: { label: "Men", color: "var(--chart-1)" },
+  women: { label: "Women", color: "var(--chart-2)" },
+  children: { label: "Children", color: "var(--chart-3)" },
+  online: { label: "Online", color: "var(--chart-4)" },
+} satisfies ChartConfig;
+
+const serviceDemographicsConfig = {
   men: { label: "Men", color: "var(--chart-1)" },
   women: { label: "Women", color: "var(--chart-2)" },
   children: { label: "Children", color: "var(--chart-3)" },
@@ -92,10 +97,6 @@ const demographicsConfig = {
 
 const preacherConfig = {
   totalAttendance: { label: "Total Attendance", color: "var(--chart-1)" },
-} satisfies ChartConfig;
-
-const currentMonthTotalConfig = {
-  total: { label: "Total Attendance", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 const currentMonthOnlinePhysicalConfig = {
@@ -267,29 +268,6 @@ export function AttendanceReports() {
 
   const monthServices = monthReport?.services ?? [];
 
-  const demographicsData = demographics
-    ? [
-        {
-          key: "men",
-          label: "Men",
-          value: demographics.totalMen,
-          fill: "var(--chart-1)",
-        },
-        {
-          key: "women",
-          label: "Women",
-          value: demographics.totalWomen,
-          fill: "var(--chart-2)",
-        },
-        {
-          key: "children",
-          label: "Children",
-          value: demographics.totalChildren,
-          fill: "var(--chart-3)",
-        },
-      ]
-    : [];
-
   const demographicsEmpty =
     demographics !== null &&
     demographics.totalMen +
@@ -351,6 +329,21 @@ export function AttendanceReports() {
             };
           })
       : null;
+
+  const serviceChartData = (detailedRows ?? []).map((row) => ({
+    label: `${formatReportDate(row.date).replace(/ \d{4}$/, "")} - ${
+      serviceTypeShortMap[row.serviceType] ?? row.serviceType
+    }`,
+    men: row.men,
+    women: row.women,
+    children: row.children,
+    online: row.online,
+    total: row.total,
+  }));
+
+  const hasBreakdownData = serviceChartData.some(
+    (row) => row.men + row.women + row.children + row.online > 0
+  );
 
   function handlePrintTablePdf() {
     if (!detailedRows) return;
@@ -471,9 +464,9 @@ export function AttendanceReports() {
         ["Monthly Attendance Growth", growthRef],
         [`Attendance by Service Type (${selectedLabel})`, serviceTypeRef],
         [`Online vs Physical Attendance (${selectedLabel})`, onlinePhysicalRef],
-        [`Attendance by Service (${selectedLabel})`, monthServiceRef],
+        [`Attendance Breakdown by Service (${selectedLabel})`, monthServiceRef],
         [`Online vs Physical by Service (${selectedLabel})`, monthOnlinePhysicalRef],
-        [`Demographics (${selectedLabel})`, demographicsRef],
+        [`Demographics by Service (${selectedLabel})`, demographicsRef],
         [`Preacher Impact (${selectedLabel})`, preacherRef],
       ];
 
@@ -750,23 +743,27 @@ export function AttendanceReports() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">
-              Attendance by Service ({selectedLabel})
+              Attendance Breakdown by Service ({selectedLabel})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!monthReport ? (
+            {!detailedRows ? (
               <Skeleton className="h-56 w-full" />
-            ) : monthServices.length === 0 ? (
+            ) : serviceChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
                 No services recorded in {selectedLabel} yet.
+              </p>
+            ) : !hasBreakdownData ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No attendance recorded in {selectedLabel} yet.
               </p>
             ) : (
               <div ref={monthServiceRef} className="w-full">
                 <ChartContainer
-                  config={currentMonthTotalConfig}
+                  config={serviceBreakdownConfig}
                   className="h-56 w-full"
                 >
-                  <BarChart data={monthServices}>
+                  <BarChart data={serviceChartData}>
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="label"
@@ -775,14 +772,32 @@ export function AttendanceReports() {
                       interval={0}
                       angle={-20}
                       textAnchor="end"
-                      height={60}
+                      height={70}
                       fontSize={11}
                     />
                     <YAxis tickLine={false} axisLine={false} width={40} />
                     <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
                     <Bar
-                      dataKey="total"
-                      fill="var(--color-total)"
+                      dataKey="men"
+                      stackId="a"
+                      fill="var(--color-men)"
+                      radius={4}
+                    />
+                    <Bar
+                      dataKey="women"
+                      stackId="a"
+                      fill="var(--color-women)"
+                    />
+                    <Bar
+                      dataKey="children"
+                      stackId="a"
+                      fill="var(--color-children)"
+                    />
+                    <Bar
+                      dataKey="online"
+                      stackId="a"
+                      fill="var(--color-online)"
                       radius={4}
                     />
                   </BarChart>
@@ -848,41 +863,77 @@ export function AttendanceReports() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">
-              Demographics ({selectedLabel})
+              Demographics by Service ({selectedLabel})
             </CardTitle>
+            {demographics && !demographicsEmpty && (
+              <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[var(--chart-1)]" />
+                  Men {demographics.totalMen}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[var(--chart-2)]" />
+                  Women {demographics.totalWomen}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-2 w-2 rounded-full bg-[var(--chart-3)]" />
+                  Children {demographics.totalChildren}
+                </span>
+              </span>
+            )}
           </CardHeader>
           <CardContent>
-            {!demographics ? (
+            {!detailedRows ? (
               <Skeleton className="h-56 w-full" />
-            ) : demographicsEmpty ? (
+            ) : serviceChartData.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                No services recorded in {selectedLabel} yet.
+              </p>
+            ) : !hasBreakdownData ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
                 No attendance recorded in {selectedLabel} yet.
               </p>
             ) : (
               <div ref={demographicsRef} className="w-full">
                 <ChartContainer
-                  config={demographicsConfig}
+                  config={serviceDemographicsConfig}
                   className="h-56 w-full"
                 >
-                  <PieChart>
-                    <ChartTooltip
-                      content={<ChartTooltipContent nameKey="label" />}
+                  <BarChart data={serviceChartData}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      angle={-20}
+                      textAnchor="end"
+                      height={70}
+                      fontSize={11}
                     />
-                    <Pie
-                      data={demographicsData}
-                      dataKey="value"
-                      nameKey="label"
-                      innerRadius={50}
-                      outerRadius={80}
-                    >
-                      {demographicsData.map((entry) => (
-                        <Cell key={entry.key} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <ChartLegend content={<ChartLegendContent nameKey="label" />} />
-                  </PieChart>
+                    <YAxis tickLine={false} axisLine={false} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar
+                      dataKey="men"
+                      stackId="a"
+                      fill="var(--color-men)"
+                      radius={4}
+                    />
+                    <Bar
+                      dataKey="women"
+                      stackId="a"
+                      fill="var(--color-women)"
+                    />
+                    <Bar
+                      dataKey="children"
+                      stackId="a"
+                      fill="var(--color-children)"
+                      radius={4}
+                    />
+                  </BarChart>
                 </ChartContainer>
               </div>
             )}

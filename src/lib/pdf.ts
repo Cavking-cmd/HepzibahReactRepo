@@ -69,34 +69,114 @@ function fitText(text: string, maxWidth: number, size: number, bold: boolean): s
   return text.slice(0, end) + "...";
 }
 
-function assemble(objects: string[]): Uint8Array<ArrayBuffer> {
-  const chunks: string[] = [];
-  const offsets: number[] = [];
-  let offset = 0;
+interface PdfObject {
+  head: string;
+  stream?: Uint8Array;
+  tail?: string;
+}
 
-  const push = (chunk: string) => {
-    chunks.push(chunk);
-    offset += chunk.length;
+function assemble(objects: (PdfObject | string)[]): Uint8Array<ArrayBuffer> {
+  const parts: Uint8Array[] = [];
+  const offsets: number[] = [];
+  let length = 0;
+
+  const pushString = (value: string) => {
+    const bytes = new Uint8Array(value.length);
+    for (let i = 0; i < value.length; i++) bytes[i] = value.charCodeAt(i) & 0xff;
+    parts.push(bytes);
+    length += bytes.length;
   };
 
-  push("%PDF-1.4\n");
+  const pushBytes = (bytes: Uint8Array) => {
+    parts.push(bytes);
+    length += bytes.length;
+  };
+
+  pushString("%PDF-1.4\n");
   for (let id = 1; id < objects.length; id++) {
-    offsets[id] = offset;
-    push(`${id} 0 obj\n${objects[id]}\nendobj\n`);
+    offsets[id] = length;
+    const object = objects[id];
+    const head = typeof object === "string" ? object : object.head;
+    pushString(`${id} 0 obj\n${head}`);
+    if (typeof object !== "string") {
+      if (object.stream) pushBytes(object.stream);
+      if (object.tail) pushString(object.tail);
+    }
+    pushString("\nendobj\n");
   }
 
-  const xrefOffset = offset;
+  const xrefOffset = length;
   let xref = `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
   for (let id = 1; id < objects.length; id++) {
     xref += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
   }
   xref += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-  push(xref);
+  pushString(xref);
 
-  const full = chunks.join("");
-  const bytes = new Uint8Array(full.length);
-  for (let i = 0; i < full.length; i++) bytes[i] = full.charCodeAt(i) & 0xff;
+  const bytes = new Uint8Array(length);
+  let cursor = 0;
+  for (const part of parts) {
+    bytes.set(part, cursor);
+    cursor += part.length;
+  }
   return bytes;
+}
+
+function jpegDimensions(bytes: Uint8Array): { width: number; height: number } {
+  let index = 2;
+  while (index + 8 < bytes.length) {
+    if (bytes[index] !== 0xff) {
+      index++;
+      continue;
+    }
+    const marker = bytes[index + 1];
+    if (
+      marker === 0xd8 ||
+      marker === 0xd9 ||
+      marker === 0x01 ||
+      (marker >= 0xd0 && marker <= 0xd7)
+    ) {
+      index += 2;
+      continue;
+    }
+    const segmentLength = (bytes[index + 2] << 8) | bytes[index + 3];
+    const isStartOfFrame =
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc;
+    if (isStartOfFrame) {
+      const height = (bytes[index + 5] << 8) | bytes[index + 6];
+      const width = (bytes[index + 7] << 8) | bytes[index + 8];
+      return { width, height };
+    }
+    index += 2 + segmentLength;
+  }
+  return { width: 1200, height: 700 };
+}
+
+function decodeJpegDataUrl(dataUrl: string): Uint8Array {
+  const comma = dataUrl.indexOf(",");
+  const metadata = dataUrl.slice(0, comma);
+  if (!metadata.includes("image/jpeg")) {
+    throw new Error("Expected a JPEG data URL.");
+  }
+  const binary = atob(dataUrl.slice(comma + 1).replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function triggerPdfDownload(fileName: string, bytes: Uint8Array<ArrayBuffer>): void {
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function buildTablePdf(options: TablePdfOptions): Uint8Array<ArrayBuffer> {
@@ -269,13 +349,135 @@ export function buildTablePdf(options: TablePdfOptions): Uint8Array<ArrayBuffer>
 }
 
 export function downloadTablePdf(fileName: string, options: TablePdfOptions): void {
-  const bytes = buildTablePdf(options);
-  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerPdfDownload(fileName, buildTablePdf(options));
+}
+
+export interface ImagePdfPage {
+  caption: string;
+  dataUrl: string;
+}
+
+export interface ImagePdfOptions {
+  title: string;
+  subtitle?: string;
+  pages: ImagePdfPage[];
+  landscape?: boolean;
+  footerNote?: string;
+}
+
+export function buildImagePdf(options: ImagePdfOptions): Uint8Array<ArrayBuffer> {
+  const landscape = options.landscape ?? true;
+  const pageWidth = landscape ? 792 : 612;
+  const pageHeight = landscape ? 612 : 792;
+  const margin = 40;
+
+  const objects: (PdfObject | string)[] = [];
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[3] =
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objects[4] =
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+
+  const images = options.pages.map((page) => {
+    const bytes = decodeJpegDataUrl(page.dataUrl);
+    return { caption: sanitize(page.caption), bytes, ...jpegDimensions(bytes) };
+  });
+
+  const pageCount = images.length;
+  const titleY = pageHeight - margin - 10;
+  const subtitleY = titleY - 15;
+  const dividerY = subtitleY - 8;
+  const captionY = dividerY - 20;
+  const imageTop = captionY - 10;
+  const imageBottom = margin + 22;
+  const imageBoxWidth = pageWidth - margin * 2;
+  const imageBoxHeight = imageTop - imageBottom;
+
+  const kids: string[] = [];
+  images.forEach((image, index) => {
+    const imageId = 5 + index * 3;
+    const contentId = imageId + 1;
+    const pageId = imageId + 2;
+
+    const title = sanitize(options.title);
+    const ops: string[] = [
+      `BT /F2 15 Tf 0.1 g 1 0 0 1 ${((pageWidth - measure(title, 15, true)) / 2).toFixed(
+        2
+      )} ${titleY.toFixed(2)} Tm (${escapePdf(title)}) Tj ET`,
+    ];
+
+    if (options.subtitle) {
+      const subtitle = sanitize(options.subtitle);
+      ops.push(
+        `BT /F1 9 Tf 0.45 g 1 0 0 1 ${(
+          (pageWidth - measure(subtitle, 9, false)) / 2
+        ).toFixed(2)} ${subtitleY.toFixed(2)} Tm (${escapePdf(subtitle)}) Tj ET`
+      );
+    }
+
+    ops.push(
+      `0.75 G 0.6 w ${margin} ${dividerY.toFixed(2)} m ${pageWidth - margin} ${dividerY.toFixed(
+        2
+      )} l S`
+    );
+
+    const caption = fitText(image.caption, imageBoxWidth, 11, true);
+    ops.push(
+      `BT /F2 11 Tf 0.15 g 1 0 0 1 ${((pageWidth - measure(caption, 11, true)) / 2).toFixed(
+        2
+      )} ${captionY.toFixed(2)} Tm (${escapePdf(caption)}) Tj ET`
+    );
+
+    const scale = Math.min(
+      imageBoxWidth / Math.max(1, image.width),
+      imageBoxHeight / Math.max(1, image.height)
+    );
+    const drawWidth = image.width * scale;
+    const drawHeight = image.height * scale;
+    const drawX = (pageWidth - drawWidth) / 2;
+    const drawY = imageBottom + (imageBoxHeight - drawHeight) / 2;
+    ops.push(
+      `q ${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${drawX.toFixed(2)} ${drawY.toFixed(
+        2
+      )} cm /Im0 Do Q`
+    );
+
+    if (options.footerNote) {
+      const note = sanitize(options.footerNote);
+      ops.push(
+        `BT /F1 8 Tf 0.45 g 1 0 0 1 ${margin} ${(margin - 12).toFixed(2)} Tm (${escapePdf(
+          note
+        )}) Tj ET`
+      );
+    }
+
+    const pageLabel = `Page ${index + 1} of ${pageCount}`;
+    ops.push(
+      `BT /F1 8 Tf 0.45 g 1 0 0 1 ${((pageWidth - measure(pageLabel, 8, false)) / 2).toFixed(
+        2
+      )} ${(margin - 12).toFixed(2)} Tm (${escapePdf(pageLabel)}) Tj ET`
+    );
+
+    const stream = ops.join("\n");
+
+    objects[imageId] = {
+      head: `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>\nstream\n`,
+      stream: image.bytes,
+      tail: "\nendstream",
+    };
+    objects[contentId] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    objects[pageId] =
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] ` +
+      `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im0 ${imageId} 0 R >> >> ` +
+      `/Contents ${contentId} 0 R >>`;
+    kids.push(`${pageId} 0 R`);
+  });
+
+  objects[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${pageCount} >>`;
+
+  return assemble(objects);
+}
+
+export function downloadImagePdf(fileName: string, options: ImagePdfOptions): void {
+  triggerPdfDownload(fileName, buildImagePdf(options));
 }

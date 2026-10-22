@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   apiGet,
+  apiList,
+  SERVICE_TYPE_NAMES,
   unwrap,
+  type AttendanceDto,
   type DemographicsDto,
   type FirstTimerConversionDto,
   type MonthOptionDto,
@@ -10,6 +14,7 @@ import {
   type OnlineVsPhysicalDto,
   type PreacherImpactDto,
   type ServiceComparisonDto,
+  type ServiceDto,
   type ServiceTypeComparisonDto,
 } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +36,15 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  FileDown,
+  ImageDown,
+  Loader2,
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -42,6 +55,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { downloadImagePdf, downloadTablePdf } from "@/lib/pdf";
+import { captureElementAsJpeg } from "@/lib/export";
+import {
+  ServiceDetailsTable,
+  type ServiceDetailRow,
+  type ServiceRecordStatus,
+} from "./ServiceDetailsTable";
+import { formatReportDate } from "@/lib/report-format";
 
 const serviceTypeLabelMap: Record<string, string> = {
   SundayService: "Sunday Service",
@@ -93,6 +114,13 @@ function monthLabelOf(year: number, month: number) {
   });
 }
 
+function recordStatus(records: AttendanceDto[]): ServiceRecordStatus {
+  if (records.length === 0) return "No record";
+  if (records.some((record) => record.isLocked)) return "Locked";
+  if (records.some((record) => record.isApproved)) return "Approved";
+  return "Pending";
+}
+
 function lastDayOfMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
@@ -116,10 +144,15 @@ export function AttendanceReports() {
     null
   );
   const [preachers, setPreachers] = useState<PreacherImpactDto[] | null>(null);
+  const [services, setServices] = useState<ServiceDto[] | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceDto[] | null>(null);
+  const [exportingCharts, setExportingCharts] = useState(false);
 
   const growthRef = useRef<HTMLDivElement | null>(null);
   const serviceTypeRef = useRef<HTMLDivElement | null>(null);
   const onlinePhysicalRef = useRef<HTMLDivElement | null>(null);
+  const monthServiceRef = useRef<HTMLDivElement | null>(null);
+  const monthOnlinePhysicalRef = useRef<HTMLDivElement | null>(null);
   const demographicsRef = useRef<HTMLDivElement | null>(null);
   const conversionRef = useRef<HTMLDivElement | null>(null);
   const preacherRef = useRef<HTMLDivElement | null>(null);
@@ -145,6 +178,8 @@ export function AttendanceReports() {
         demographicsData,
         conversionData,
         preacherData,
+        attendanceData,
+        serviceData,
       ] = await Promise.all([
         apiGet<MonthlyGrowthDto[]>(
           "/api/Reports/Attendance/monthly-growth?months=12"
@@ -165,6 +200,8 @@ export function AttendanceReports() {
         apiGet<PreacherImpactDto[]>(
           `/api/Reports/Attendance/preacher-impact?month=${selectedKey}`
         ),
+        apiList<AttendanceDto>("/api/Attendance"),
+        apiList<ServiceDto>("/api/Service"),
       ]);
 
       if (cancelled) return;
@@ -176,6 +213,8 @@ export function AttendanceReports() {
       setDemographics(demographicsData);
       setConversion(conversionData);
       setPreachers(preacherData ? unwrap<PreacherImpactDto>(preacherData) : []);
+      setAttendanceRecords(attendanceData);
+      setServices(serviceData);
     }
 
     load();
@@ -272,53 +311,201 @@ export function AttendanceReports() {
   const showEmptyMonthHint =
     isCurrentMonth && !monthHasData && lastDataMonth !== null;
 
-  // Download shell disabled for now; see ChartDownloadMenu usages below to re-enable.
-  // const growthCsvRows = [
-  //   ["Month", "Total Attendance", "% Change vs Prev. Month"],
-  //   ...(growth ?? []).map((g) => [
-  //     g.monthLabel,
-  //     g.totalAttendance,
-  //     g.percentChangeFromPreviousMonth ?? "N/A",
-  //   ]),
-  // ];
+  const detailedRows: ServiceDetailRow[] | null =
+    services && attendanceRecords
+      ? services
+          .filter((service) => service.date.slice(0, 7) === selectedKey)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((service) => {
+            const records = attendanceRecords.filter(
+              (record) => record.serviceId === service.id
+            );
+            const sum = (pick: (record: AttendanceDto) => number) =>
+              records.reduce((total, record) => total + pick(record), 0);
 
-  // const serviceTypeCsvRows = [
-  //   ["Service Type", "Total Attendance", "Average Attendance", "Record Count"],
-  //   ...byServiceType.map((row) => [
-  //     row.serviceType,
-  //     row.totalAttendance,
-  //     row.averageAttendance,
-  //     row.recordCount,
-  //   ]),
-  // ];
+            const men = sum((record) => record.men);
+            const women = sum((record) => record.women);
+            const children = sum((record) => record.children);
+            const online = sum((record) => record.onlineAttendance);
+            const physical = men + women + children;
 
-  // const onlinePhysicalCsvRows = [
-  //   ["Month", "Online", "Physical"],
-  //   ...onlineVsPhysical.map((row) => [
-  //     row.monthLabel,
-  //     row.totalOnline,
-  //     row.totalPhysical,
-  //   ]),
-  // ];
+            return {
+              id: service.id,
+              date: service.date,
+              serviceType:
+                SERVICE_TYPE_NAMES[service.serviceType] ??
+                String(service.serviceType),
+              theme: service.theme ?? "",
+              scriptureText: service.scriptureText ?? "",
+              preacher: service.preacher ?? "",
+              men,
+              women,
+              children,
+              sundaySchool: sum((record) => record.sundaySchool),
+              firstTimers: sum((record) => record.firstTimers),
+              newConverts: sum((record) => record.newConverts),
+              online,
+              physical,
+              total: physical + online,
+              status: recordStatus(records),
+            };
+          })
+      : null;
 
-  // const demographicsCsvRows = [
-  //   ["Demographic", "Count"],
-  //   ...demographicsData.map((row) => [row.label, row.value]),
-  // ];
+  function handlePrintTablePdf() {
+    if (!detailedRows) return;
 
-  // const conversionCsvRows = conversion
-  //   ? [
-  //       ["Metric", "Value"],
-  //       ["First Timers", conversion.totalFirstTimers],
-  //       ["New Converts", conversion.totalNewConverts],
-  //       ["Conversion Rate (%)", conversion.conversionRatePercent.toFixed(1)],
-  //     ]
-  //   : [["Metric", "Value"]];
+    const totals = detailedRows.reduce(
+      (acc, row) => ({
+        men: acc.men + row.men,
+        women: acc.women + row.women,
+        children: acc.children + row.children,
+        sundaySchool: acc.sundaySchool + row.sundaySchool,
+        firstTimers: acc.firstTimers + row.firstTimers,
+        newConverts: acc.newConverts + row.newConverts,
+        online: acc.online + row.online,
+        physical: acc.physical + row.physical,
+        total: acc.total + row.total,
+      }),
+      {
+        men: 0,
+        women: 0,
+        children: 0,
+        sundaySchool: 0,
+        firstTimers: 0,
+        newConverts: 0,
+        online: 0,
+        physical: 0,
+        total: 0,
+      }
+    );
 
-  // const preacherCsvRows = [
-  //   ["Preacher", "Total Attendance"],
-  //   ...(preachers ?? []).map((row) => [row.preacher, row.totalAttendance]),
-  // ];
+    const rows = detailedRows.map((row) => [
+      formatReportDate(row.date),
+      row.serviceType,
+      row.theme,
+      row.scriptureText,
+      row.preacher,
+      String(row.men),
+      String(row.women),
+      String(row.children),
+      String(row.sundaySchool),
+      String(row.firstTimers),
+      String(row.newConverts),
+      String(row.online),
+      String(row.physical),
+      String(row.total),
+      row.status,
+    ]);
+
+    if (rows.length > 0) {
+      rows.push([
+        "TOTAL",
+        "",
+        "",
+        "",
+        "",
+        String(totals.men),
+        String(totals.women),
+        String(totals.children),
+        String(totals.sundaySchool),
+        String(totals.firstTimers),
+        String(totals.newConverts),
+        String(totals.online),
+        String(totals.physical),
+        String(totals.total),
+        "",
+      ]);
+    }
+
+    downloadTablePdf(`attendance-details-${selectedKey}.pdf`, {
+      title: "Attendance Report - Service Details",
+      subtitle: `${selectedLabel} - ${detailedRows.length} service${
+        detailedRows.length === 1 ? "" : "s"
+      } - Total attendance ${totals.total}`,
+      headers: [
+        "Date",
+        "Service",
+        "Theme",
+        "Scripture",
+        "Preacher",
+        "Men",
+        "Women",
+        "Children",
+        "S. School",
+        "First Timers",
+        "Converts",
+        "Online",
+        "Physical",
+        "Total",
+        "Status",
+      ],
+      rows,
+      widths: [62, 78, 95, 78, 72, 26, 32, 26, 38, 38, 40, 36, 40, 32, 50],
+      align: [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "left",
+      ],
+      footerNote:
+        "Total = Men + Women + Children + Online. Sunday School is recorded separately.",
+    });
+  }
+
+  async function handlePrintChartsPdf() {
+    setExportingCharts(true);
+    try {
+      const targets: Array<[string, React.RefObject<HTMLDivElement | null>]> = [
+        ["Monthly Attendance Growth", growthRef],
+        [`Attendance by Service Type (${selectedLabel})`, serviceTypeRef],
+        [`Online vs Physical Attendance (${selectedLabel})`, onlinePhysicalRef],
+        [`Attendance by Service (${selectedLabel})`, monthServiceRef],
+        [`Online vs Physical by Service (${selectedLabel})`, monthOnlinePhysicalRef],
+        [`Demographics (${selectedLabel})`, demographicsRef],
+        [`Preacher Impact (${selectedLabel})`, preacherRef],
+      ];
+
+      const pages: Array<{ caption: string; dataUrl: string }> = [];
+      for (const [caption, ref] of targets) {
+        const dataUrl = await captureElementAsJpeg(ref.current);
+        if (dataUrl) pages.push({ caption, dataUrl });
+      }
+
+      if (pages.length === 0) {
+        toast.error("No charts to export for this month.");
+        return;
+      }
+
+      const generatedOn = new Date().toLocaleDateString("en-CA", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+      downloadImagePdf(`attendance-charts-${selectedKey}.pdf`, {
+        title: "Attendance Report - Charts",
+        subtitle: selectedLabel,
+        pages,
+        footerNote: `Generated ${generatedOn}`,
+      });
+    } catch {
+      toast.error("Could not generate the charts PDF.");
+    } finally {
+      setExportingCharts(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -360,9 +547,32 @@ export function AttendanceReports() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">{selectedLabel}</span>
           {isCurrentMonth && <Badge variant="outline">Current Month</Badge>}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintTablePdf}
+            disabled={!detailedRows || detailedRows.length === 0}
+            title="Download the service details as a PDF table"
+          >
+            <FileDown className="h-4 w-4" /> Print Table PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void handlePrintChartsPdf()}
+            disabled={exportingCharts}
+            title="Download the charts as a PDF"
+          >
+            {exportingCharts ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImageDown className="h-4 w-4" />
+            )}
+            Print Charts PDF
+          </Button>
         </div>
       </div>
 
@@ -383,6 +593,8 @@ export function AttendanceReports() {
           </Button>
         </div>
       )}
+
+      <ServiceDetailsTable rows={detailedRows} monthLabel={selectedLabel} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -407,7 +619,6 @@ export function AttendanceReports() {
                   previous month
                 </Badge>
               )}
-            {/* <ChartDownloadMenu fileNameBase="monthly-attendance-growth" chartRef={growthRef} csvRows={growthCsvRows} /> */}
           </div>
         </CardHeader>
 
@@ -448,7 +659,6 @@ export function AttendanceReports() {
             <CardTitle className="text-base">
               Attendance by Service Type ({selectedLabel})
             </CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="attendance-by-service-type" chartRef={serviceTypeRef} csvRows={serviceTypeCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -491,7 +701,6 @@ export function AttendanceReports() {
             <CardTitle className="text-base">
               Online vs Physical Attendance ({selectedLabel})
             </CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="online-vs-physical-attendance" chartRef={onlinePhysicalRef} csvRows={onlinePhysicalCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!comparison ? (
@@ -552,31 +761,33 @@ export function AttendanceReports() {
                 No services recorded in {selectedLabel} yet.
               </p>
             ) : (
-              <ChartContainer
-                config={currentMonthTotalConfig}
-                className="h-56 w-full"
-              >
-                <BarChart data={monthServices}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={60}
-                    fontSize={11}
-                  />
-                  <YAxis tickLine={false} axisLine={false} width={40} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar
-                    dataKey="total"
-                    fill="var(--color-total)"
-                    radius={4}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <div ref={monthServiceRef} className="w-full">
+                <ChartContainer
+                  config={currentMonthTotalConfig}
+                  className="h-56 w-full"
+                >
+                  <BarChart data={monthServices}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      angle={-20}
+                      textAnchor="end"
+                      height={60}
+                      fontSize={11}
+                    />
+                    <YAxis tickLine={false} axisLine={false} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar
+                      dataKey="total"
+                      fill="var(--color-total)"
+                      radius={4}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -595,39 +806,41 @@ export function AttendanceReports() {
                 No services recorded in {selectedLabel} yet.
               </p>
             ) : (
-              <ChartContainer
-                config={currentMonthOnlinePhysicalConfig}
-                className="h-56 w-full"
-              >
-                <BarChart data={monthServices}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    angle={-20}
-                    textAnchor="end"
-                    height={60}
-                    fontSize={11}
-                  />
-                  <YAxis tickLine={false} axisLine={false} width={40} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar
-                    dataKey="physical"
-                    stackId="a"
-                    fill="var(--color-physical)"
-                    radius={4}
-                  />
-                  <Bar
-                    dataKey="online"
-                    stackId="a"
-                    fill="var(--color-online)"
-                    radius={4}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <div ref={monthOnlinePhysicalRef} className="w-full">
+                <ChartContainer
+                  config={currentMonthOnlinePhysicalConfig}
+                  className="h-56 w-full"
+                >
+                  <BarChart data={monthServices}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                      angle={-20}
+                      textAnchor="end"
+                      height={60}
+                      fontSize={11}
+                    />
+                    <YAxis tickLine={false} axisLine={false} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar
+                      dataKey="physical"
+                      stackId="a"
+                      fill="var(--color-physical)"
+                      radius={4}
+                    />
+                    <Bar
+                      dataKey="online"
+                      stackId="a"
+                      fill="var(--color-online)"
+                      radius={4}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -639,7 +852,6 @@ export function AttendanceReports() {
             <CardTitle className="text-base">
               Demographics ({selectedLabel})
             </CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="attendance-demographics" chartRef={demographicsRef} csvRows={demographicsCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!demographics ? (
@@ -682,7 +894,6 @@ export function AttendanceReports() {
             <CardTitle className="text-base">
               First-Timer Conversion ({selectedLabel})
             </CardTitle>
-            {/* <ChartDownloadMenu fileNameBase="first-timer-conversion" chartRef={conversionRef} csvRows={conversionCsvRows} /> */}
           </CardHeader>
           <CardContent>
             {!conversion ? (
@@ -730,7 +941,6 @@ export function AttendanceReports() {
           <CardTitle className="text-base">
             Preacher Impact ({selectedLabel})
           </CardTitle>
-          {/* <ChartDownloadMenu fileNameBase="preacher-impact" chartRef={preacherRef} csvRows={preacherCsvRows} /> */}
         </CardHeader>
         <CardContent>
           {!preachers ? (

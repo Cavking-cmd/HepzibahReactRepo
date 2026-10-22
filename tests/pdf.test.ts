@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildTablePdf } from "../src/lib/pdf.ts";
+import { buildImagePdf, buildTablePdf } from "../src/lib/pdf.ts";
 
 function toBinaryString(bytes: Uint8Array): string {
   let out = "";
@@ -96,4 +96,50 @@ test("renders a valid single page for an empty list", () => {
 
   assert.equal(Number(/\/Count (\d+)/.exec(text)?.[1]), 1);
   assert.ok(text.includes("No items to list."));
+});
+
+const TINY_JPEG =
+  "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==";
+
+test("builds a multi-page image PDF with valid binary-safe xref offsets", () => {
+  const bytes = buildImagePdf({
+    title: "Attendance Charts",
+    subtitle: "October 2026",
+    pages: [
+      { caption: "Monthly Growth", dataUrl: TINY_JPEG },
+      { caption: "Demographics", dataUrl: TINY_JPEG },
+    ],
+    footerNote: "Generated today",
+  });
+  const text = toBinaryString(bytes);
+
+  assert.ok(text.startsWith("%PDF-1.4\n"));
+  assert.equal(Number(/\/Count (\d+)/.exec(text)?.[1]), 2);
+  assert.ok(text.includes("/Filter /DCTDecode"));
+  assert.ok(text.includes("/Width 1 /Height 1"));
+  assert.ok(text.includes("(Monthly Growth)"));
+  assert.ok(text.includes("(Demographics)"));
+
+  const startxref = Number(/startxref\n(\d+)\n%%EOF/.exec(text)?.[1]);
+  const xrefLines = text.slice(startxref).split("\n");
+  const entryCount = Number(xrefLines[1].split(" ")[1]);
+  const offsets = xrefLines
+    .slice(3, 3 + entryCount - 1)
+    .map((line) => Number(line.slice(0, 10)));
+
+  offsets.forEach((offset, index) => {
+    const header = `${index + 1} 0 obj`;
+    assert.equal(text.slice(offset, offset + header.length), header);
+  });
+});
+
+test("rejects non-JPEG image data", () => {
+  assert.throws(
+    () =>
+      buildImagePdf({
+        title: "Invalid",
+        pages: [{ caption: "PNG", dataUrl: "data:image/png;base64,AAAA" }],
+      }),
+    /JPEG/
+  );
 });

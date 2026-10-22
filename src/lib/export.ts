@@ -1,4 +1,4 @@
-import { toPng } from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
 
 export async function exportElementAsPng(
   element: HTMLElement | null,
@@ -11,6 +11,19 @@ export async function exportElementAsPng(
     backgroundColor: "#ffffff",
   });
   triggerDownload(dataUrl, fileName);
+}
+
+export async function captureElementAsJpeg(
+  element: HTMLElement | null,
+  quality = 0.92
+): Promise<string | null> {
+  if (!element) return null;
+  return toJpeg(element, {
+    quality,
+    pixelRatio: 2,
+    cacheBust: true,
+    backgroundColor: "#ffffff",
+  });
 }
 
 type CsvValue = string | number | null | undefined;

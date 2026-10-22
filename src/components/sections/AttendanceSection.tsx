@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { apiRequest, type AttendanceDto, type ServiceDto } from "@/lib/api";
+import { apiRequest, SERVICE_TYPE_NAMES, type AttendanceDto, type ServiceDto } from "@/lib/api";
 import { useCrudList } from "@/hooks/useCrudList";
 import { usePagination } from "@/hooks/usePagination";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,27 @@ const emptyForm = {
   onlineAttendance: "0",
 };
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function formatServiceDate(dateStr: string): string {
+  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return dateStr.slice(0, 10);
+  return `${d} ${MONTH_NAMES[m - 1]}`;
+}
+
 export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionProps) {
   const { items, loading, refresh } = useCrudList<AttendanceDto>("/api/Attendance");
   const { items: services } = useCrudList<ServiceDto>("/api/Service");
@@ -60,9 +81,19 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
   const [saving, setSaving] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ type: "delete" | "lock"; record: AttendanceDto } | null>(null);
 
+  const recordedServiceIds = new Set(items.map((a) => a.serviceId));
+  const unrecordedServices = services.filter(
+    (s) => !recordedServiceIds.has(s.id)
+  );
+  const selectableServices = services.filter(
+    (s) => !recordedServiceIds.has(s.id) || s.id === editing?.serviceId
+  );
+
   function serviceLabel(id: string) {
     const s = services.find((x) => x.id === id);
-    return s ? `${s.date.slice(0, 10)} - ${s.day}` : "Deleted service";
+    if (!s) return "Deleted service";
+    const type = SERVICE_TYPE_NAMES[s.serviceType] ?? s.serviceType;
+    return `${formatServiceDate(s.date)} - ${type}`;
   }
 
   function openCreate() {
@@ -153,7 +184,16 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Attendance</h2>
         {canWrite && (
-          <Button onClick={openCreate} size="sm" disabled={services.length === 0}>
+          <Button
+            onClick={openCreate}
+            size="sm"
+            disabled={unrecordedServices.length === 0}
+            title={
+              unrecordedServices.length === 0
+                ? "All services already have attendance recorded."
+                : undefined
+            }
+          >
             <Plus className="h-4 w-4" /> New Attendance
           </Button>
         )}
@@ -265,9 +305,14 @@ export function AttendanceSection({ canWrite, canApprove }: AttendanceSectionPro
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map((s) => (
+                  {selectableServices.length === 0 && (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All services already have attendance.
+                    </div>
+                  )}
+                  {selectableServices.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.date.slice(0, 10)} - {s.day}
+                      {serviceLabel(s.id)}
                     </SelectItem>
                   ))}
                 </SelectContent>

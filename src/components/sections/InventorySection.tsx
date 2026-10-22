@@ -32,7 +32,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TablePagination } from "@/components/TablePagination";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FileDown } from "lucide-react";
+import { downloadTablePdf } from "@/lib/pdf";
 
 interface InventorySectionProps {
   canWrite: boolean;
@@ -127,6 +128,61 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
     }
   }
 
+  function handleExportPdf() {
+    const currency = (amount: number) =>
+      amount.toLocaleString(undefined, { style: "currency", currency: "CAD" });
+    const totalQuantity = sortedItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalValue = sortedItems.reduce((sum, item) => sum + item.value, 0);
+    const generatedOn = new Date().toLocaleDateString("en-CA", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const rows = sortedItems.map((item) => [
+      item.itemName,
+      item.serialNumber ?? "",
+      item.category,
+      String(item.quantity),
+      item.location,
+      ITEM_CONDITION_NAMES[item.condition] ?? String(item.condition),
+      currency(item.value),
+      item.custodian,
+    ]);
+    if (rows.length > 0) {
+      rows.push([
+        "TOTAL",
+        "",
+        "",
+        String(totalQuantity),
+        "",
+        "",
+        currency(totalValue),
+        "",
+      ]);
+    }
+
+    downloadTablePdf(`inventory-list-${new Date().toISOString().slice(0, 10)}.pdf`, {
+      title: "Inventory List",
+      subtitle: `Generated ${generatedOn} - ${sortedItems.length} item${
+        sortedItems.length === 1 ? "" : "s"
+      } - Total value ${currency(totalValue)}`,
+      headers: [
+        "Item",
+        "Serial No.",
+        "Category",
+        "Qty",
+        "Location",
+        "Condition",
+        "Value",
+        "Custodian",
+      ],
+      rows,
+      widths: [150, 95, 85, 35, 85, 85, 75, 100],
+      align: ["left", "left", "left", "right", "left", "left", "right", "left"],
+    });
+  }
+
   async function handleDelete(item: InventoryItemDto) {
     const result = await apiRequest("DELETE", `/api/InventoryItem/${item.id}`);
     if (result.ok) {
@@ -141,11 +197,24 @@ export function InventorySection({ canWrite }: InventorySectionProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Inventory</h2>
-        {canWrite && (
-          <Button onClick={openCreate} size="sm">
-            <Plus className="h-4 w-4" /> New Item
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={loading || sortedItems.length === 0}
+            title={
+              sortedItems.length === 0 ? "No inventory items to export." : "Download inventory list as PDF"
+            }
+          >
+            <FileDown className="h-4 w-4" /> Download PDF
           </Button>
-        )}
+          {canWrite && (
+            <Button onClick={openCreate} size="sm">
+              <Plus className="h-4 w-4" /> New Item
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (

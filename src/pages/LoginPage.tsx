@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { routeForRoles } from "@/lib/roles";
@@ -105,6 +105,11 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in…" : "Login"}
               </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                <Link to="/forgot-password" className="hover:underline">
+                  Forgot password?
+                </Link>
+              </p>
             </form>
           </CardContent>
         </Card>

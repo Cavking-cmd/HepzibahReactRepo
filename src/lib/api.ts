@@ -382,6 +382,7 @@ export interface UserDto {
   email: string;
   displayName: string | null;
   avatarBase64: string | null;
+  emailVerified: boolean;
   userRoles: string[];
 }
 

@@ -93,7 +93,7 @@ export default function SettingsPage() {
               <ProfileTab profile={profile} onUpdated={setProfile} />
             </TabsContent>
             <TabsContent value="security" className="mt-4">
-              <SecurityTab />
+              <SecurityTab profile={profile} />
             </TabsContent>
             <TabsContent value="passkeys" className="mt-4">
               <PasskeysTab />
@@ -191,7 +191,7 @@ function ProfileTab({
   );
 }
 
-function SecurityTab() {
+function SecurityTab({ profile }: { profile: UserDto | null }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -203,6 +203,22 @@ function SecurityTab() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
+
+  const [resending, setResending] = useState(false);
+
+  async function handleResendVerification() {
+    if (!profile?.email) return;
+    setResending(true);
+    const { ok, body } = await apiRequest<boolean>("POST", "/api/User/resend-verification", {
+      email: profile.email,
+    });
+    setResending(false);
+    if (ok && body?.status) {
+      toast.success("Verification email sent. Please check your inbox.");
+    } else {
+      toast.error(body?.message ?? "Failed to send verification email.");
+    }
+  }
 
   function reauth(message: string) {
     logout();
@@ -242,6 +258,26 @@ function SecurityTab() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Email Verification</CardTitle>
+          <CardDescription>Verify your email to help secure your account.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm">
+              {profile?.emailVerified ? "Your email is verified." : "Your email address is not verified."}
+            </p>
+            {profile?.email && <p className="text-xs text-muted-foreground">{profile.email}</p>}
+          </div>
+          {!profile?.emailVerified && (
+            <Button variant="outline" onClick={() => void handleResendVerification()} disabled={resending}>
+              {resending ? "Sending…" : "Resend verification email"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Change Email</CardTitle>

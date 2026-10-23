@@ -30,6 +30,7 @@ import {
 import { Bell, LogOut, Settings, type LucideIcon } from "lucide-react";
 import churchLogo from "@/assets/church-logo.png";
 import { InstallApp } from "@/components/pwa/InstallApp";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 export interface NavSection {
   id: string;
@@ -235,7 +236,14 @@ export function DashboardLayout({
           <div className="absolute inset-x-0 bottom-0 h-px header-accent-line" />
         </header>
 
-        <main className="app-main-backdrop flex-1 p-4 sm:p-6">{children}</main>
+        <main className="app-main-backdrop flex-1 p-4 sm:p-6">
+          {profile && !profile.emailVerified && (
+            <div className="mb-4">
+              <EmailVerificationBanner email={profile.email} />
+            </div>
+          )}
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

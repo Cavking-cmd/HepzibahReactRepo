@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { DashboardLayout, type NavSection } from "@/components/layout/DashboardLayout";
 import { ReimbursementSection } from "@/components/sections/ReimbursementSection";
-import { Wallet } from "lucide-react";
+import { AccountsApprovalDashboard } from "@/components/sections/AccountsApprovalDashboard";
+import { Wallet, CheckSquare } from "lucide-react";
 
-const SECTIONS: NavSection[] = [{ id: "accounts", label: "Accounts Payable", icon: Wallet }];
+const SECTIONS: NavSection[] = [
+  { id: "approval", label: "Approval & Payment", icon: CheckSquare },
+  { id: "accounts", label: "All Reimbursements", icon: Wallet },
+];
 
 export default function AccountsOfficerDashboard() {
-  const [activeSection, setActiveSection] = useState("accounts");
+  const [activeSection, setActiveSection] = useState("approval");
 
   return (
     <DashboardLayout
@@ -16,6 +20,7 @@ export default function AccountsOfficerDashboard() {
       activeSection={activeSection}
       onSectionChange={setActiveSection}
     >
+      {activeSection === "approval" && <AccountsApprovalDashboard />}
       {activeSection === "accounts" && <ReimbursementSection mode="accountsOfficer" />}
     </DashboardLayout>
   );

@@ -182,15 +182,17 @@ export function ReimbursementDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full p-3 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="flex flex-wrap items-center gap-2">
-            {request.requestNumber}
-            <Badge variant={status.variant}>{status.label}</Badge>
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="w-[100vw] max-w-none h-[100dvh] max-h-[100dvh] m-0 p-0 rounded-none sm:w-[100vw] sm:max-w-none sm:h-[100dvh] sm:max-h-[100dvh] sm:m-0 sm:p-0 sm:rounded-none">
+        <div className="flex flex-col h-full max-h-[100dvh]">
+          <DialogHeader className="px-4 sm:px-6 py-4 border-b">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-lg">
+              {request.requestNumber}
+              <Badge variant={status.variant}>{status.label}</Badge>
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-5 text-sm">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <div className="max-w-7xl mx-auto space-y-5 text-sm">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">Payee</p><p className="font-medium">{request.payeeName}</p></div>
             <div><p className="text-xs text-muted-foreground">Department</p><p className="font-medium">{request.department}</p></div>
@@ -373,9 +375,10 @@ export function ReimbursementDetailDialog({
               </div>
             </div>
           )}
+          </div>
         </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:flex-wrap">
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:flex-wrap px-4 sm:px-6 py-3 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Close
           </Button>
@@ -432,6 +435,7 @@ export function ReimbursementDetailDialog({
             </Button>
           )}
         </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

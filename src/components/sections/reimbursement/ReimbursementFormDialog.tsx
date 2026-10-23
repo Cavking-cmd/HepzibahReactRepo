@@ -218,18 +218,20 @@ export function ReimbursementFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full p-3 sm:p-6">
-        <DialogHeader>
-          <DialogTitle>{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="w-[100vw] max-w-none h-[100dvh] max-h-[100dvh] m-0 p-0 rounded-none sm:w-[100vw] sm:max-w-none sm:h-[100dvh] sm:max-h-[100dvh] sm:m-0 sm:p-0 sm:rounded-none">
+        <div className="flex flex-col h-full max-h-[100dvh]">
+          <DialogHeader className="px-4 sm:px-6 py-4 border-b">
+            <DialogTitle className="text-lg">{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
+          </DialogHeader>
 
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void handleSave(false);
           }}
-          className="space-y-5"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-4"
         >
+          <div className="max-w-7xl mx-auto space-y-5">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="payeeName">Payee Name</Label>
@@ -466,7 +468,7 @@ export function ReimbursementFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row px-4 sm:px-6 py-3 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving !== null} className="w-full sm:w-auto">
               Cancel
             </Button>
@@ -482,7 +484,9 @@ export function ReimbursementFormDialog({
               {saving === "submit" ? "Submitting..." : "Submit for Approval"}
             </Button>
           </DialogFooter>
-        </form>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

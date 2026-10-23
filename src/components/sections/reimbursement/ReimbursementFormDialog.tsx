@@ -218,7 +218,7 @@ export function ReimbursementFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle>{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
         </DialogHeader>
@@ -230,7 +230,7 @@ export function ReimbursementFormDialog({
           }}
           className="space-y-5"
         >
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="payeeName">Payee Name</Label>
               <Input
@@ -272,7 +272,7 @@ export function ReimbursementFormDialog({
           </div>
 
           <div className="rounded-lg border border-border/70">
-            <div className="flex items-center justify-between gap-2 border-b border-border/70 px-3 py-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/70 px-2 sm:px-3 py-2">
               <div>
                 <p className="text-sm font-medium">Items purchased</p>
                 <p className="text-xs text-muted-foreground">
@@ -285,13 +285,14 @@ export function ReimbursementFormDialog({
                 variant="outline"
                 onClick={addLine}
                 disabled={form.lines.length >= MAX_REIMBURSEMENT_ITEMS}
+                className="self-start sm:self-auto"
               >
                 <Plus className="h-4 w-4" /> Add Item
               </Button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-sm">
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <table className="w-full min-w-[700px] sm:min-w-[820px] text-xs sm:text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 w-12">Ref #</th>
@@ -390,7 +391,7 @@ export function ReimbursementFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
             <div className="space-y-3 rounded-lg border border-border/70 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Receipts &amp; invoices</p>
@@ -465,17 +466,18 @@ export function ReimbursementFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving !== null}>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving !== null} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" variant="secondary" disabled={saving !== null}>
+            <Button type="submit" variant="secondary" disabled={saving !== null} className="w-full sm:w-auto">
               {saving === "draft" ? "Saving..." : "Save Draft"}
             </Button>
             <Button
               type="button"
               onClick={() => void handleSave(true)}
               disabled={saving !== null}
+              className="w-full sm:w-auto"
             >
               {saving === "submit" ? "Submitting..." : "Submit for Approval"}
             </Button>

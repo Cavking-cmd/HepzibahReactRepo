@@ -288,6 +288,7 @@ export function ReimbursementDetailDialog({
               <div className="grid grid-cols-2 gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">Minister approved</span><span>{formatDay(request.ministerApprovedDate)}</span>
                 <span className="text-muted-foreground">Accounts approved</span><span>{formatDay(request.approvedDate)}</span>
+                <span className="text-muted-foreground">Prepared by</span><span>{request.preparedBy || "-"}</span>
                 <span className="text-muted-foreground">Cheque number</span><span>{request.chequeNumber || "-"}</span>
                 <span className="text-muted-foreground">Authorized by (1)</span><span>{request.authorizedByName1 || "-"}</span>
                 <span className="text-muted-foreground">Authorized by (2)</span><span>{request.authorizedByName2 || "-"}</span>

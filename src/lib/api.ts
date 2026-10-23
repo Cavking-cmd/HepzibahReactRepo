@@ -473,6 +473,7 @@ export interface ReimbursementRequestDto {
   amountPaid: number | null;
   paymentMethod: string | null;
   paymentReference: string | null;
+  preparedBy: string | null;
   chequeNumber: string | null;
   authorizedByName1: string | null;
   authorizedByName2: string | null;

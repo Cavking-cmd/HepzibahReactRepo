@@ -18,6 +18,8 @@ export function AccountsApprovalDashboard() {
   const [detail, setDetail] = useState<ReimbursementRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvalData, setApprovalData] = useState<Record<string, any>>({});
   const [paymentData, setPaymentData] = useState<Record<string, any>>({});
 
   const load = useCallback(async () => {
@@ -35,12 +37,23 @@ export function AccountsApprovalDashboard() {
   const readyToPay = requests.filter((r) => r.status === 3);
 
   async function approveForPayment(request: ReimbursementRequestDto) {
-    const result = await apiRequest("POST", `/api/Reimbursements/${request.id}/approve`, { notes: "Approved for payment." });
+    const data = approvalData[request.id] || {};
+    setApprovingId(request.id);
+    const result = await apiRequest("POST", `/api/Reimbursements/${request.id}/approve`, {
+      notes: data.notes?.trim() || "Approved for payment.",
+      preparedBy: data.preparedBy?.trim() || null,
+      chequeNumber: data.chequeNumber?.trim() || null,
+      authorizedByName1: data.authorizedByName1?.trim() || null,
+      authorizedByName2: data.authorizedByName2?.trim() || null,
+      authorizationDate: data.authorizationDate || null,
+    });
+    setApprovingId(null);
     if (!result.ok) {
       toast.error(result.body?.message ?? "Approval failed.");
       return;
     }
     toast.success("Approved for payment.");
+    setApprovingId(null);
     void load();
   }
 
@@ -65,6 +78,7 @@ export function AccountsApprovalDashboard() {
       amountPaid,
       paymentMethod: data.paymentMethod.trim(),
       paymentReference: data.paymentReference?.trim() || null,
+      preparedBy: data.preparedBy?.trim() || null,
       chequeNumber: data.chequeNumber?.trim() || null,
       authorizedByName1: data.authorizedByName1?.trim() || null,
       authorizedByName2: data.authorizedByName2?.trim() || null,
@@ -126,19 +140,60 @@ export function AccountsApprovalDashboard() {
                 <TableBody>
                   {reviewQueue.map((request) => {
                     const status = statusMeta(request.status);
+                    const data = approvalData[request.id] || {};
                     return (
-                      <TableRow key={request.id} className="cursor-pointer" onClick={() => openDetail(request)}>
-                        <TableCell className="font-medium">{request.requestNumber}</TableCell>
-                        <TableCell>{request.payeeName}</TableCell>
-                        <TableCell>{request.department}</TableCell>
-                        <TableCell className="text-right tabular-nums">{formatMoney(request.totalAmount)}</TableCell>
-                        <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" onClick={(e) => { e.stopPropagation(); void approveForPayment(request); }}>
-                            <CheckCircle2 className="h-4 w-4 mr-1" /> Approve for Payment
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        <TableRow key={request.id} className="cursor-pointer" onClick={() => openDetail(request)}>
+                          <TableCell className="font-medium">{request.requestNumber}</TableCell>
+                          <TableCell>{request.payeeName}</TableCell>
+                          <TableCell>{request.department}</TableCell>
+                          <TableCell className="text-right tabular-nums">{formatMoney(request.totalAmount)}</TableCell>
+                          <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <Button size="sm" onClick={(e) => { e.stopPropagation(); setApprovingId(approvingId === request.id ? null : request.id); }}>
+                              <CheckCircle2 className="h-4 w-4 mr-1" /> {approvingId === request.id ? "Close" : "Approve for Payment"}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {approvingId === request.id && (
+                          <TableRow key={`${request.id}-approval`}>
+                            <TableCell colSpan={6} className="bg-muted/30">
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 py-2">
+                                <div className="space-y-1">
+                                  <Label>Prepared By</Label>
+                                  <Input value={data.preparedBy || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, preparedBy: e.target.value}})} placeholder="Name of preparer" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Cheque Number</Label>
+                                  <Input value={data.chequeNumber || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, chequeNumber: e.target.value}})} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Authorization Date</Label>
+                                  <Input type="date" value={data.authorizationDate || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizationDate: e.target.value}})} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Authorized By (1)</Label>
+                                  <Input value={data.authorizedByName1 || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizedByName1: e.target.value}})} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Authorized By (2)</Label>
+                                  <Input value={data.authorizedByName2 || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizedByName2: e.target.value}})} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Notes</Label>
+                                  <Input value={data.notes || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, notes: e.target.value}})} placeholder="Optional approval note" />
+                                </div>
+                                <div className="flex gap-2 lg:col-span-3">
+                                  <Button onClick={(e) => { e.stopPropagation(); void approveForPayment(request); }} disabled={approvingId === request.id && payingId !== null}>
+                                    <CheckCircle2 className="h-4 w-4 mr-1" /> Confirm Approval
+                                  </Button>
+                                  <Button variant="outline" onClick={(e) => { e.stopPropagation(); setApprovingId(null); }}>Cancel</Button>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     );
                   })}
                 </TableBody>
@@ -194,6 +249,10 @@ export function AccountsApprovalDashboard() {
                         <div className="space-y-1">
                           <Label>Payment Reference</Label>
                           <Input value={data.paymentReference || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, paymentReference: e.target.value}})} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Prepared By</Label>
+                          <Input value={data.preparedBy || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, preparedBy: e.target.value}})} placeholder={request.preparedBy || "Name of preparer"} />
                         </div>
                         <div className="space-y-1">
                           <Label>Authorization Date</Label>

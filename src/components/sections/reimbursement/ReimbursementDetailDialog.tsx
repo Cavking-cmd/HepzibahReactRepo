@@ -96,7 +96,7 @@ export function ReimbursementDetailDialog({
 
   const status = statusMeta(request.status);
   const canManageAccounts = mode === "accountsOfficer" || mode === "accountsAdmin";
-  const canApprove = mode === "accountsAdmin";
+  const canApprove = mode === "accountsAdmin" || mode === "accountsOfficer";
   const canMinister = mode === "pastor" || mode === "accountsAdmin";
   const isOwnerView = mode === "member";
 
@@ -182,7 +182,7 @@ export function ReimbursementDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-full p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             {request.requestNumber}
@@ -375,7 +375,7 @@ export function ReimbursementDetailDialog({
           )}
         </div>
 
-        <DialogFooter className="flex-wrap gap-2">
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:flex-wrap">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Close
           </Button>

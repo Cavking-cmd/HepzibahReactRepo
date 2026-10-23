@@ -9,7 +9,9 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import AttendanceOfficerDashboard from "@/pages/AttendanceOfficerDashboard";
 import FellowshipLeaderDashboard from "@/pages/FellowshipLeaderDashboard";
 import InventoryOfficerDashboard from "@/pages/InventoryOfficerDashboard";
-import ViewerDashboard from "@/pages/ViewerDashboard";
+import MemberDashboard from "@/pages/MemberDashboard";
+import AccountsOfficerDashboard from "@/pages/AccountsOfficerDashboard";
+import PastorDashboard from "@/pages/PastorDashboard";
 
 export default function App() {
   return (
@@ -60,10 +62,26 @@ export default function App() {
             }
           />
           <Route
-            path="/viewer"
+            path="/member"
             element={
-              <ProtectedRoute requiredRole="Viewer">
-                <ViewerDashboard />
+              <ProtectedRoute requiredRole="ChurchMember">
+                <MemberDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accounts-officer"
+            element={
+              <ProtectedRoute requiredRole="AccountsOfficer">
+                <AccountsOfficerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pastor"
+            element={
+              <ProtectedRoute requiredRole="Pastor">
+                <PastorDashboard />
               </ProtectedRoute>
             }
           />

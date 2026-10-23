@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { apiRequest, type UserDto } from "@/lib/api";
+import { apiList, apiRequest, type NotificationDto, type UserDto } from "@/lib/api";
+import { routeForRoles } from "@/lib/roles";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings, type LucideIcon } from "lucide-react";
+import { Bell, LogOut, Settings, type LucideIcon } from "lucide-react";
 import churchLogo from "@/assets/church-logo.png";
 import { InstallApp } from "@/components/pwa/InstallApp";
 
@@ -55,9 +56,10 @@ export function DashboardLayout({
   children,
   readOnly,
 }: DashboardLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, roles, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserDto | null>(null);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +73,29 @@ export function DashboardLayout({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNotifications() {
+      const items = await apiList<NotificationDto>("/api/Notification");
+      if (!cancelled) setNotifications(items);
+    }
+
+    void loadNotifications();
+    const timer = window.setInterval(() => void loadNotifications(), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+  async function markNotificationsRead() {
+    await apiRequest("POST", "/api/Notification/read-all");
+    setNotifications(await apiList<NotificationDto>("/api/Notification"));
+  }
 
   function handleLogout() {
     logout();
@@ -128,6 +153,60 @@ export function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-1 sm:gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="relative inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-sm font-semibold">Notifications</span>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => void markNotificationsRead()}
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                {notifications.length === 0 ? (
+                  <p className="px-2 py-4 text-center text-xs text-muted-foreground">No notifications yet.</p>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="items-start gap-2 py-2"
+                        onClick={() => navigate(routeForRoles(roles))}
+                      >
+                        <span
+                          className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                            notification.isRead ? "bg-transparent" : "bg-primary"
+                          }`}
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">{notification.title}</span>
+                          <span className="block text-xs text-muted-foreground">{notification.message}</span>
+                          <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                            {notification.createdDate.slice(0, 10)}
+                          </span>
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <InstallApp className="hidden sm:inline-flex" />
             <div className="text-right hidden sm:block">
               <div className="text-sm font-medium leading-tight">{user?.email}</div>

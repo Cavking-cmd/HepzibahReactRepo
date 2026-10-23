@@ -14,7 +14,9 @@ export function ProtectedRoute({ requiredRole, anyRole, children }: ProtectedRou
     return <Navigate to="/login" replace />;
   }
 
-  if (!anyRole && requiredRole && !hasRole("Admin") && !hasRole(requiredRole)) {
+  const isSuperAdmin = hasRole("Admin") || hasRole("AccountsAdmin");
+
+  if (!anyRole && requiredRole && !isSuperAdmin && !hasRole(requiredRole)) {
     return <Navigate to="/login" replace />;
   }
 

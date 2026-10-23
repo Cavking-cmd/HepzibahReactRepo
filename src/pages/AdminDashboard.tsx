@@ -7,8 +7,10 @@ import { FellowshipCentersSection } from "@/components/sections/FellowshipCenter
 import { FellowshipAttendanceSection } from "@/components/sections/FellowshipAttendanceSection";
 import { InventorySection } from "@/components/sections/InventorySection";
 import { UsersSection } from "@/components/sections/UsersSection";
+import { ReimbursementSection } from "@/components/sections/ReimbursementSection";
 import { ReportsSection } from "@/components/sections/reports/ReportsSection";
-import { LayoutDashboard, Calendar, Users, Home, ClipboardList, Package, UserPlus, BarChart3 } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { LayoutDashboard, Calendar, Users, Home, ClipboardList, Package, UserPlus, BarChart3, Wallet } from "lucide-react";
 
 const SECTIONS: NavSection[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -22,13 +24,19 @@ const SECTIONS: NavSection[] = [
 ];
 
 export default function AdminDashboard() {
+  const { hasRole } = useAuth();
   const [activeSection, setActiveSection] = useState("overview");
+  const canManageAccounts = hasRole("AccountsAdmin");
+
+  const sections = canManageAccounts
+    ? [...SECTIONS, { id: "accounts", label: "Accounts Payable", icon: Wallet }]
+    : SECTIONS;
 
   return (
     <DashboardLayout
-      title="Admin"
-      roleLabel="Administrator"
-      sections={SECTIONS}
+      title={canManageAccounts ? "Accounts Administrator" : "Admin"}
+      roleLabel={canManageAccounts ? "Administrator" : "Administrator"}
+      sections={sections}
       activeSection={activeSection}
       onSectionChange={setActiveSection}
     >
@@ -39,6 +47,7 @@ export default function AdminDashboard() {
       {activeSection === "fellowship-attendance" && <FellowshipAttendanceSection canWrite canApprove />}
       {activeSection === "inventory" && <InventorySection canWrite />}
       {activeSection === "users" && <UsersSection />}
+      {activeSection === "accounts" && canManageAccounts && <ReimbursementSection mode="accountsAdmin" />}
       {activeSection === "reports" && <ReportsSection />}
     </DashboardLayout>
   );

@@ -410,3 +410,102 @@ export interface PasskeyDto {
   nickname: string | null;
   createdDate: string;
 }
+
+export interface ReimbursementItemDto {
+  id: string;
+  referenceNumber: number;
+  itemName: string;
+  subtotal: number;
+  gst: number;
+  pst: number;
+  hst: number;
+  total: number;
+  requiresSerialNumber: boolean;
+  serialNumber: string | null;
+  screeningNote: string | null;
+}
+
+export interface ReimbursementReceiptDto {
+  id: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  uploadedBy: string;
+  createdDate: string;
+}
+
+export interface ReimbursementHistoryDto {
+  id: string;
+  action: string;
+  actorUserId: string;
+  actorName: string | null;
+  fromStatus: number | null;
+  toStatus: number | null;
+  notes: string | null;
+  timestamp: string;
+}
+
+export interface ReimbursementRequestDto {
+  id: string;
+  requestNumber: string;
+  payeeUserId: string;
+  payeeEmail: string | null;
+  payeeName: string;
+  department: string;
+  ministerInCharge: string;
+  requestDate: string;
+  remarks: string | null;
+  subtotal: number;
+  gst: number;
+  pst: number;
+  hst: number;
+  totalAmount: number;
+  status: number;
+  statusName: string;
+  receiptCount: number;
+  submittedDate: string | null;
+  ministerApprovedDate: string | null;
+  reviewedDate: string | null;
+  approvedDate: string | null;
+  paymentDate: string | null;
+  amountPaid: number | null;
+  paymentMethod: string | null;
+  paymentReference: string | null;
+  chequeNumber: string | null;
+  authorizedByName1: string | null;
+  authorizedByName2: string | null;
+  authorizationDate: string | null;
+  financeNotes: string | null;
+  rejectionReason: string | null;
+  infoRequestNotes: string | null;
+  createdDate: string;
+  items: ReimbursementItemDto[];
+  receipts: ReimbursementReceiptDto[];
+  history: ReimbursementHistoryDto[];
+}
+
+export interface NotificationDto {
+  id: string;
+  title: string;
+  message: string;
+  link: string | null;
+  reimbursementRequestId: string | null;
+  isRead: boolean;
+  createdDate: string;
+}
+
+export interface ReceiptFileDto {
+  fileName: string;
+  contentType: string;
+  data: string;
+}
+
+export const REIMBURSEMENT_STATUS_NAMES: Record<number, string> = {
+  0: "Draft",
+  1: "Pending Minister Approval",
+  2: "Accounts Review",
+  3: "Approved for Payment",
+  4: "Paid",
+  5: "Rejected",
+  6: "Information Requested",
+};

@@ -190,4 +190,141 @@
   [data-slot="sidebar-menu-button"][data-active="true"] svg {
     color: oklch(0.985 0 0);
   }
+
+  /* Device-aware workspace dialogs (accounts / reimbursements).
+     Phone: bottom sheet. Tablet: compact card. Desktop: landscape panel. */
+  [data-slot="dialog-content"].workspace-dialog {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    display: flex;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: min(94dvh, 100%) !important;
+    max-height: min(94dvh, 100%) !important;
+    transform: none !important;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    padding: 0 !important;
+    box-shadow: 0 -16px 48px oklch(0.2 0.032 267 / 0.16);
+  }
+
+  .workspace-dialog-shell,
+  .workspace-dialog-form {
+    display: flex;
+    min-height: 0;
+    height: 100%;
+    max-height: inherit;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .workspace-dialog-handle {
+    display: block;
+    width: 2.75rem;
+    height: 0.28rem;
+    margin: 0.55rem auto 0;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--muted-foreground) 40%, transparent);
+  }
+
+  .workspace-dialog-header {
+    flex-shrink: 0;
+    gap: 0.35rem;
+    padding: 0.7rem 3.25rem 0.85rem 1.15rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workspace-dialog-body {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1rem 1.15rem 1.25rem;
+  }
+
+  .workspace-dialog-footer {
+    margin: 0 !important;
+    flex-shrink: 0;
+    flex-direction: column !important;
+    gap: 0.5rem;
+    border-radius: 0 !important;
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklch, var(--muted) 70%, var(--popover));
+    padding: 0.75rem 1.15rem calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .workspace-dialog [data-slot="dialog-close"] {
+    top: 0.7rem;
+    right: 0.65rem;
+  }
+
+  @media (min-width: 640px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      top: 50% !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: 50% !important;
+      width: min(92vw, 40rem) !important;
+      max-width: min(92vw, 40rem) !important;
+      height: auto !important;
+      max-height: min(88dvh, 46rem) !important;
+      transform: translate(-50%, -50%) !important;
+      border-radius: 1.15rem !important;
+      box-shadow: 0 24px 64px oklch(0.2 0.032 267 / 0.18);
+    }
+
+    .workspace-dialog-handle {
+      display: none;
+    }
+
+    .workspace-dialog-header {
+      padding: 1rem 3.25rem 0.95rem 1.35rem;
+    }
+
+    .workspace-dialog-body {
+      padding: 1.15rem 1.35rem 1.35rem;
+    }
+
+    .workspace-dialog-footer {
+      flex-direction: row !important;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      padding: 0.85rem 1.35rem !important;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      width: min(90vw, 68rem) !important;
+      max-width: min(90vw, 68rem) !important;
+      max-height: min(82dvh, 44rem) !important;
+    }
+
+    .workspace-dialog-header {
+      padding-left: 1.6rem;
+      padding-right: 3.25rem;
+    }
+
+    .workspace-dialog-body {
+      padding-left: 1.6rem;
+      padding-right: 1.6rem;
+    }
+
+    .workspace-dialog-footer {
+      padding-left: 1.6rem !important;
+      padding-right: 1.6rem !important;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      width: min(88vw, 76rem) !important;
+      max-width: min(88vw, 76rem) !important;
+    }
+  }
 }

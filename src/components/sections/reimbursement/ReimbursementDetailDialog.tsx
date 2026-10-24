@@ -12,13 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  WorkspaceDialogBody,
+  WorkspaceDialogContent,
+  WorkspaceDialogFooter,
+  WorkspaceDialogHandle,
+  WorkspaceDialogHeader,
+  WorkspaceDialogShell,
+} from "@/components/ui/workspace-dialog";
 
 export type ReimbursementMode = "member" | "accountsOfficer" | "accountsAdmin" | "pastor";
 
@@ -182,18 +184,19 @@ export function ReimbursementDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex w-[min(96vw,80rem)] max-w-[min(96vw,80rem)] max-h-[min(88dvh,52rem)] flex-col gap-0 overflow-hidden rounded-xl p-0">
-        <div className="flex min-h-0 max-h-[min(88dvh,52rem)] flex-col">
-          <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
-            <DialogTitle className="flex flex-wrap items-center gap-2 pr-8 text-lg">
+      <WorkspaceDialogContent>
+        <WorkspaceDialogShell>
+          <WorkspaceDialogHandle />
+          <WorkspaceDialogHeader>
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-base sm:text-lg">
               {request.requestNumber}
               <Badge variant={status.variant}>{status.label}</Badge>
             </DialogTitle>
-          </DialogHeader>
+          </WorkspaceDialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+        <WorkspaceDialogBody>
           <div className="space-y-5 text-sm">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4">
             <div><p className="text-xs text-muted-foreground">Payee</p><p className="font-medium">{request.payeeName}</p></div>
             <div><p className="text-xs text-muted-foreground">Department</p><p className="font-medium">{request.department}</p></div>
             <div><p className="text-xs text-muted-foreground">Minister in charge</p><p className="font-medium">{request.ministerInCharge}</p></div>
@@ -204,7 +207,36 @@ export function ReimbursementDetailDialog({
             <div><p className="text-xs text-muted-foreground">Draft created</p><p className="font-medium">{formatDay(request.createdDate)}</p></div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-border/70">
+          <div className="space-y-2 md:hidden">
+            {request.items.map((item) => (
+              <div key={item.id} className="space-y-2 rounded-xl border border-border/70 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ref #{item.referenceNumber}</p>
+                    <p className="font-medium">{item.itemName}</p>
+                    {item.requiresSerialNumber && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Serial: {item.serialNumber || "Not provided"}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-semibold tabular-nums">{formatMoney(item.total)}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span>Subtotal</span><span className="text-right tabular-nums text-foreground">{formatMoney(item.subtotal)}</span>
+                  <span>GST</span><span className="text-right tabular-nums text-foreground">{formatMoney(item.gst)}</span>
+                  <span>PST</span><span className="text-right tabular-nums text-foreground">{formatMoney(item.pst)}</span>
+                  <span>HST</span><span className="text-right tabular-nums text-foreground">{formatMoney(item.hst)}</span>
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between rounded-xl bg-muted/40 px-3 py-2 font-semibold">
+              <span>Total</span>
+              <span className="tabular-nums">{formatMoney(request.totalAmount)}</span>
+            </div>
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-border/70 md:block">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                 <tr>
@@ -377,9 +409,9 @@ export function ReimbursementDetailDialog({
             </div>
           )}
           </div>
-        </div>
+        </WorkspaceDialogBody>
 
-        <DialogFooter className="mx-0 mb-0 shrink-0 flex-col-reverse gap-2 border-t px-4 py-3 sm:flex-row sm:flex-wrap sm:px-6">
+        <WorkspaceDialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Close
           </Button>
@@ -435,9 +467,9 @@ export function ReimbursementDetailDialog({
               Save Payment
             </Button>
           )}
-        </DialogFooter>
-        </div>
-      </DialogContent>
+        </WorkspaceDialogFooter>
+        </WorkspaceDialogShell>
+      </WorkspaceDialogContent>
     </Dialog>
   );
 }

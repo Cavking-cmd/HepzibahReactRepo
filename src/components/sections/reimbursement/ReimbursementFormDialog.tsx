@@ -21,13 +21,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogTitle } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  WorkspaceDialogBody,
+  WorkspaceDialogContent,
+  WorkspaceDialogFooter,
+  WorkspaceDialogForm,
+  WorkspaceDialogHandle,
+  WorkspaceDialogHeader,
+  WorkspaceDialogShell,
+} from "@/components/ui/workspace-dialog";
 import { Plus, Trash2, Upload, FileText } from "lucide-react";
 
 interface ReimbursementFormDialogProps {
@@ -218,20 +221,22 @@ export function ReimbursementFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex w-[min(96vw,80rem)] max-w-[min(96vw,80rem)] max-h-[min(88dvh,52rem)] flex-col gap-0 overflow-hidden rounded-xl p-0">
-        <div className="flex min-h-0 max-h-[min(88dvh,52rem)] flex-col">
-          <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
-            <DialogTitle className="pr-8 text-lg">{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
-          </DialogHeader>
+      <WorkspaceDialogContent>
+        <WorkspaceDialogShell>
+          <WorkspaceDialogHandle />
+          <WorkspaceDialogHeader>
+            <DialogTitle className="text-base sm:text-lg">
+              {editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}
+            </DialogTitle>
+          </WorkspaceDialogHeader>
 
-        <form
+        <WorkspaceDialogForm
           onSubmit={(e) => {
             e.preventDefault();
             void handleSave(false);
           }}
-          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+          <WorkspaceDialogBody>
           <div className="space-y-5">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
@@ -294,8 +299,70 @@ export function ReimbursementFormDialog({
               </Button>
             </div>
 
-            <div className="overflow-x-auto -mx-2 sm:mx-0">
-              <table className="w-full min-w-[700px] sm:min-w-[820px] text-xs sm:text-sm">
+            <div className="space-y-3 p-3 md:hidden">
+              {form.lines.map((line, index) => {
+                const serialRequired = requiresSerialNumber(line.itemName);
+                return (
+                  <div key={index} className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Item {index + 1}</p>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removeLine(index)}
+                        aria-label="Remove item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={line.itemName}
+                      onChange={(e) => updateLine(index, { itemName: e.target.value })}
+                      placeholder="What was purchased?"
+                    />
+                    {serialRequired && (
+                      <div>
+                        <Input
+                          value={line.serialNumber}
+                          onChange={(e) => updateLine(index, { serialNumber: e.target.value })}
+                          placeholder="Serial number (required)"
+                          className={line.serialNumber.trim() ? "" : "border-destructive"}
+                        />
+                        <p className="mt-1 text-xs text-destructive">
+                          Serialised equipment detected. A serial number is required before submission.
+                        </p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Subtotal</Label>
+                        <Input type="number" min="0" step="0.01" value={line.subtotal} onChange={(e) => updateLine(index, { subtotal: e.target.value })} placeholder="0.00" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>GST</Label>
+                        <Input type="number" min="0" step="0.01" value={line.gst} onChange={(e) => updateLine(index, { gst: e.target.value })} placeholder="0.00" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>PST</Label>
+                        <Input type="number" min="0" step="0.01" value={line.pst} onChange={(e) => updateLine(index, { pst: e.target.value })} placeholder="0.00" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>HST</Label>
+                        <Input type="number" min="0" step="0.01" value={line.hst} onChange={(e) => updateLine(index, { hst: e.target.value })} placeholder="0.00" />
+                      </div>
+                    </div>
+                    <div className="flex justify-between border-t border-border/60 pt-2 text-sm font-medium">
+                      <span>Total</span>
+                      <span className="tabular-nums">{formatMoney(lineTotal(line))}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 w-12">Ref #</th>
@@ -470,8 +537,8 @@ export function ReimbursementFormDialog({
           </div>
 
           </div>
-          </div>
-          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col-reverse gap-2 border-t px-4 py-3 sm:flex-row sm:px-6">
+          </WorkspaceDialogBody>
+          <WorkspaceDialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving !== null} className="w-full sm:w-auto">
               Cancel
             </Button>
@@ -486,10 +553,10 @@ export function ReimbursementFormDialog({
             >
               {saving === "submit" ? "Submitting..." : "Submit for Approval"}
             </Button>
-          </DialogFooter>
-          </form>
-        </div>
-      </DialogContent>
+          </WorkspaceDialogFooter>
+          </WorkspaceDialogForm>
+        </WorkspaceDialogShell>
+      </WorkspaceDialogContent>
     </Dialog>
   );
 }

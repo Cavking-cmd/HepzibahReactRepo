@@ -218,10 +218,10 @@ export function ReimbursementFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[100vw] max-w-none h-[100dvh] max-h-[100dvh] m-0 p-0 rounded-none sm:w-[100vw] sm:max-w-none sm:h-[100dvh] sm:max-h-[100dvh] sm:m-0 sm:p-0 sm:rounded-none">
-        <div className="flex flex-col h-full max-h-[100dvh]">
-          <DialogHeader className="px-4 sm:px-6 py-4 border-b">
-            <DialogTitle className="text-lg">{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
+      <DialogContent className="flex w-[min(96vw,80rem)] max-w-[min(96vw,80rem)] max-h-[min(88dvh,52rem)] flex-col gap-0 overflow-hidden rounded-xl p-0">
+        <div className="flex min-h-0 max-h-[min(88dvh,52rem)] flex-col">
+          <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
+            <DialogTitle className="pr-8 text-lg">{editing ? `Edit ${editing.requestNumber}` : "New Reimbursement Request"}</DialogTitle>
           </DialogHeader>
 
         <form
@@ -229,9 +229,10 @@ export function ReimbursementFormDialog({
             e.preventDefault();
             void handleSave(false);
           }}
-          className="flex-1 overflow-y-auto px-4 sm:px-6 py-4"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="max-w-7xl mx-auto space-y-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+          <div className="space-y-5">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="payeeName">Payee Name</Label>
@@ -468,7 +469,9 @@ export function ReimbursementFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row px-4 sm:px-6 py-3 border-t">
+          </div>
+          </div>
+          <DialogFooter className="mx-0 mb-0 shrink-0 flex-col-reverse gap-2 border-t px-4 py-3 sm:flex-row sm:px-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving !== null} className="w-full sm:w-auto">
               Cancel
             </Button>
@@ -484,7 +487,6 @@ export function ReimbursementFormDialog({
               {saving === "submit" ? "Submitting..." : "Submit for Approval"}
             </Button>
           </DialogFooter>
-            </div>
           </form>
         </div>
       </DialogContent>

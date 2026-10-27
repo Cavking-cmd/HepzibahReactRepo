@@ -7,11 +7,13 @@ import { useTheme } from "next-themes";
 import {
   apiRequest,
   unwrap,
+  type EmailStatusDto,
   type PasskeyDto,
   type UpdateEmailRequest,
   type UpdatePasswordRequest,
   type UpdateProfileRequest,
   type UserDto,
+  type VerificationEmailSentDto,
 } from "@/lib/api";
 import {
   createPasskeyCredential,
@@ -23,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ResendVerificationDialog } from "@/components/ResendVerificationDialog";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -66,6 +70,9 @@ export default function SettingsPage() {
     };
   }, []);
 
+  const canManageEmail =
+    profile?.userRoles.some((role) => role === "Admin" || role === "AccountsAdmin") ?? false;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="flex items-center justify-between gap-4 border-b px-4 py-3">
@@ -87,6 +94,7 @@ export default function SettingsPage() {
               <TabsTrigger value="security">Security</TabsTrigger>
               <TabsTrigger value="passkeys">Passkeys</TabsTrigger>
               <TabsTrigger value="appearance">Appearance</TabsTrigger>
+              {canManageEmail && <TabsTrigger value="email">Email delivery</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="profile" className="mt-4">
@@ -101,6 +109,11 @@ export default function SettingsPage() {
             <TabsContent value="appearance" className="mt-4">
               <AppearanceTab />
             </TabsContent>
+            {canManageEmail && (
+              <TabsContent value="email" className="mt-4">
+                <EmailDeliveryTab profile={profile} />
+              </TabsContent>
+            )}
           </Tabs>
         )}
       </main>
@@ -204,21 +217,7 @@ function SecurityTab({ profile }: { profile: UserDto | null }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  const [resending, setResending] = useState(false);
-
-  async function handleResendVerification() {
-    if (!profile?.email) return;
-    setResending(true);
-    const { ok, body } = await apiRequest<boolean>("POST", "/api/User/resend-verification", {
-      email: profile.email,
-    });
-    setResending(false);
-    if (ok && body?.status) {
-      toast.success("Verification email sent. Please check your inbox.");
-    } else {
-      toast.error(body?.message ?? "Failed to send verification email.");
-    }
-  }
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   function reauth(message: string) {
     logout();
@@ -271,12 +270,18 @@ function SecurityTab({ profile }: { profile: UserDto | null }) {
             {profile?.email && <p className="text-xs text-muted-foreground">{profile.email}</p>}
           </div>
           {!profile?.emailVerified && (
-            <Button variant="outline" onClick={() => void handleResendVerification()} disabled={resending}>
-              {resending ? "Sending…" : "Resend verification email"}
+            <Button variant="outline" onClick={() => setConfirmOpen(true)}>
+              Resend verification email
             </Button>
           )}
         </CardContent>
       </Card>
+
+      <ResendVerificationDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        email={profile?.email ?? ""}
+      />
 
       <Card>
         <CardHeader>
@@ -549,3 +554,115 @@ function AppearanceTab() {
     </Card>
   );
 }
+
+function EmailDeliveryTab({ profile }: { profile: UserDto | null }) {
+  const [status, setStatus] = useState<EmailStatusDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<
+    { kind: "ok"; email: string } | { kind: "error"; message: string } | null
+  >(null);
+
+  async function loadStatus() {
+    setLoading(true);
+    const { ok, body } = await apiRequest<EmailStatusDto>("GET", "/api/User/email-status");
+    setLoading(false);
+    if (ok && body?.data) setStatus(body.data);
+  }
+
+  useEffect(() => {
+    void loadStatus();
+  }, []);
+
+  async function sendTest() {
+    setSending(true);
+    setResult(null);
+    const { ok, body } = await apiRequest<VerificationEmailSentDto>("POST", "/api/User/test-email");
+    setSending(false);
+    if (ok && body?.status) {
+      const delivered = body.data?.email ?? profile?.email ?? "your address";
+      setResult({ kind: "ok", email: delivered });
+      toast.success(`Test email sent to ${delivered}.`);
+      return;
+    }
+    const message = body?.message ?? "The test email could not be sent.";
+    setResult({ kind: "error", message });
+    toast.error(message);
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center gap-2">
+            Email delivery
+            {!loading && status && (
+              <Badge variant={status.configured ? "secondary" : "destructive"}>
+                {status.configured ? "Configured" : "Not configured"}
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Every portal notification is delivered through {status?.provider ?? "Resend"}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {loading ? (
+            <p className="text-muted-foreground">Checking configuration…</p>
+          ) : !status ? (
+            <p className="text-destructive">Could not read the email delivery settings.</p>
+          ) : (
+            <>
+              <dl className="grid gap-2 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                <dt className="text-muted-foreground">Sender address</dt>
+                <dd className="break-all font-medium">{status.from ?? "—"}</dd>
+                <dt className="text-muted-foreground">Sender name</dt>
+                <dd className="font-medium">{status.fromName ?? "—"}</dd>
+                <dt className="text-muted-foreground">Portal link base</dt>
+                <dd className="break-all font-medium">{status.frontendBaseUrl ?? "—"}</dd>
+              </dl>
+
+              {!status.configured && (
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive">
+                  Email is switched off because the server has no provider key. Add a{" "}
+                  <code className="rounded bg-background px-1">RESEND_API_KEY</code> environment
+                  variable to the API service and redeploy; notifications, verification links and
+                  password resets start working immediately after that.
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={() => void sendTest()} disabled={sending}>
+                  {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {sending ? "Sending…" : "Send test email to me"}
+                </Button>
+                <Button variant="ghost" onClick={() => void loadStatus()} disabled={loading}>
+                  Re-check
+                </Button>
+                {profile?.email && (
+                  <span className="text-xs text-muted-foreground">Goes to {profile.email}</span>
+                )}
+              </div>
+
+              {result?.kind === "ok" && (
+                <p className="rounded-lg border border-emerald-300/60 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-950/40 dark:text-emerald-100">
+                  Test message accepted for delivery to {result.email}. Check that inbox (and the
+                  spam folder) to confirm.
+                </p>
+              )}
+              {result?.kind === "error" && (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-destructive"
+                >
+                  {result.message}
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+

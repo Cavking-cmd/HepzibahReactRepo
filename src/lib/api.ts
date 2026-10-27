@@ -407,6 +407,19 @@ export interface UpdatePasswordRequest {
   newPassword: string;
 }
 
+export interface VerificationEmailSentDto {
+  email: string;
+  sentAtUtc: string;
+}
+
+export interface EmailStatusDto {
+  configured: boolean;
+  provider: string;
+  from: string | null;
+  fromName: string | null;
+  frontendBaseUrl: string | null;
+}
+
 export interface PasskeyDto {
   id: string;
   nickname: string | null;

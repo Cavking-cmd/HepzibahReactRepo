@@ -192,7 +192,7 @@
   }
 
   /* Device-aware workspace dialogs (accounts / reimbursements).
-     Phone: bottom sheet. Tablet: compact card. Desktop: landscape panel. */
+     Phone: bottom sheet. Tablet: compact card. Desktop: wide landscape panel. */
   [data-slot="dialog-content"].workspace-dialog {
     top: auto !important;
     right: 0 !important;
@@ -269,10 +269,10 @@
       right: auto !important;
       bottom: auto !important;
       left: 50% !important;
-      width: min(92vw, 40rem) !important;
-      max-width: min(92vw, 40rem) !important;
+      width: min(94vw, 52rem) !important;
+      max-width: min(94vw, 52rem) !important;
       height: auto !important;
-      max-height: min(88dvh, 46rem) !important;
+      max-height: min(90dvh, 50rem) !important;
       transform: translate(-50%, -50%) !important;
       border-radius: 1.15rem !important;
       box-shadow: 0 24px 64px oklch(0.2 0.032 267 / 0.18);
@@ -288,6 +288,7 @@
 
     .workspace-dialog-body {
       padding: 1.15rem 1.35rem 1.35rem;
+      scrollbar-gutter: stable;
     }
 
     .workspace-dialog-footer {
@@ -298,11 +299,14 @@
     }
   }
 
+  /* Landscape panel: wide and tall enough that the two-column body does the
+     scrolling instead of one long narrow column. */
   @media (min-width: 1024px) {
     [data-slot="dialog-content"].workspace-dialog {
-      width: min(90vw, 68rem) !important;
-      max-width: min(90vw, 68rem) !important;
-      max-height: min(82dvh, 44rem) !important;
+      width: min(94vw, 82rem) !important;
+      max-width: min(94vw, 82rem) !important;
+      height: min(92dvh, 54rem) !important;
+      max-height: min(92dvh, 54rem) !important;
     }
 
     .workspace-dialog-header {
@@ -323,8 +327,34 @@
 
   @media (min-width: 1280px) {
     [data-slot="dialog-content"].workspace-dialog {
-      width: min(88vw, 76rem) !important;
-      max-width: min(88vw, 76rem) !important;
+      width: min(92vw, 88rem) !important;
+      max-width: min(92vw, 88rem) !important;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      width: min(90vw, 96rem) !important;
+      max-width: min(90vw, 96rem) !important;
+      height: min(90dvh, 58rem) !important;
+      max-height: min(90dvh, 58rem) !important;
+    }
+  }
+
+  /* Two-column "landscape" body used by the reimbursement dialogs. On wide
+     screens the sidebar keeps receipts, totals, and history beside the main
+     content so there is far less vertical scrolling. */
+  .workspace-dialog-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  @media (min-width: 1280px) {
+    .workspace-dialog-split {
+      grid-template-columns: minmax(0, 1fr) 22rem;
+      gap: 1.5rem;
     }
   }
 }

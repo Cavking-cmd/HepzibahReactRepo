@@ -237,8 +237,9 @@ export function ReimbursementFormDialog({
           }}
         >
           <WorkspaceDialogBody>
-          <div className="space-y-5">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="workspace-dialog-split">
+          <div className="space-y-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="payeeName">Payee Name</Label>
               <Input
@@ -362,7 +363,7 @@ export function ReimbursementFormDialog({
             </div>
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[680px] text-sm">
                 <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2 w-12">Ref #</th>
@@ -461,7 +462,9 @@ export function ReimbursementFormDialog({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
+          </div>
+
+          <div className="space-y-3">
             <div className="space-y-3 rounded-lg border border-border/70 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Receipts &amp; invoices</p>

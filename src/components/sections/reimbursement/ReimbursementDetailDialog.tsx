@@ -195,8 +195,9 @@ export function ReimbursementDetailDialog({
           </WorkspaceDialogHeader>
 
         <WorkspaceDialogBody>
-          <div className="space-y-5 text-sm">
-          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="workspace-dialog-split text-sm">
+          <div className="space-y-5">
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 xl:grid-cols-3">
             <div><p className="text-xs text-muted-foreground">Payee</p><p className="font-medium">{request.payeeName}</p></div>
             <div><p className="text-xs text-muted-foreground">Department</p><p className="font-medium">{request.department}</p></div>
             <div><p className="text-xs text-muted-foreground">Minister in charge</p><p className="font-medium">{request.ministerInCharge}</p></div>
@@ -286,54 +287,6 @@ export function ReimbursementDetailDialog({
             <div><p className="text-xs text-muted-foreground">Remarks</p><p className="mt-0.5">{request.remarks}</p></div>
           )}
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-lg border border-border/70 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Receipts</p>
-              {request.receipts.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No receipts attached.</p>
-              ) : (
-                <div className="space-y-2">
-                  {request.receipts.map((receipt) => (
-                    <div key={receipt.id} className="flex items-center gap-2">
-                      <span className="truncate">{receipt.fileName}</span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="ml-auto"
-                        onClick={() =>
-                          void downloadReceipt(receipt.id, receipt.fileName).catch((error: unknown) =>
-                            toast.error(error instanceof Error ? error.message : "Download failed."),
-                          )
-                        }
-                      >
-                        Download
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-border/70 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Finance &amp; approval</p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                <span className="text-muted-foreground">Minister approved</span><span>{formatDay(request.ministerApprovedDate)}</span>
-                <span className="text-muted-foreground">Accounts approved</span><span>{formatDay(request.approvedDate)}</span>
-                <span className="text-muted-foreground">Prepared by</span><span>{request.preparedBy || "-"}</span>
-                <span className="text-muted-foreground">Cheque number</span><span>{request.chequeNumber || "-"}</span>
-                <span className="text-muted-foreground">Authorized by (1)</span><span>{request.authorizedByName1 || "-"}</span>
-                <span className="text-muted-foreground">Authorized by (2)</span><span>{request.authorizedByName2 || "-"}</span>
-                <span className="text-muted-foreground">Authorization date</span><span>{formatDay(request.authorizationDate)}</span>
-                <span className="text-muted-foreground">Payment date</span><span>{formatDay(request.paymentDate)}</span>
-                <span className="text-muted-foreground">Amount paid</span><span>{request.amountPaid != null ? formatMoney(request.amountPaid) : "-"}</span>
-                <span className="text-muted-foreground">Method</span><span>{request.paymentMethod || "-"}</span>
-                <span className="text-muted-foreground">Reference</span><span>{request.paymentReference || "-"}</span>
-              </div>
-              {request.financeNotes && <p className="mt-2 text-xs text-muted-foreground">Finance note: {request.financeNotes}</p>}
-            </div>
-          </div>
-
           {request.infoRequestNotes && (
             <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
               <p className="font-medium">Information requested</p>
@@ -347,6 +300,54 @@ export function ReimbursementDetailDialog({
               <p className="mt-1">{request.rejectionReason}</p>
             </div>
           )}
+          </div>
+
+          <div className="space-y-4">
+          <div className="rounded-lg border border-border/70 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Receipts</p>
+            {request.receipts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No receipts attached.</p>
+            ) : (
+              <div className="space-y-2">
+                {request.receipts.map((receipt) => (
+                  <div key={receipt.id} className="flex items-center gap-2">
+                    <span className="truncate">{receipt.fileName}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto"
+                      onClick={() =>
+                        void downloadReceipt(receipt.id, receipt.fileName).catch((error: unknown) =>
+                          toast.error(error instanceof Error ? error.message : "Download failed."),
+                        )
+                      }
+                    >
+                      Download
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border/70 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Finance &amp; approval</p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+              <span className="text-muted-foreground">Minister approved</span><span>{formatDay(request.ministerApprovedDate)}</span>
+              <span className="text-muted-foreground">Accounts approved</span><span>{formatDay(request.approvedDate)}</span>
+              <span className="text-muted-foreground">Prepared by</span><span>{request.preparedBy || "-"}</span>
+              <span className="text-muted-foreground">Cheque number</span><span>{request.chequeNumber || "-"}</span>
+              <span className="text-muted-foreground">Authorized by (1)</span><span>{request.authorizedByName1 || "-"}</span>
+              <span className="text-muted-foreground">Authorized by (2)</span><span>{request.authorizedByName2 || "-"}</span>
+              <span className="text-muted-foreground">Authorization date</span><span>{formatDay(request.authorizationDate)}</span>
+              <span className="text-muted-foreground">Payment date</span><span>{formatDay(request.paymentDate)}</span>
+              <span className="text-muted-foreground">Amount paid</span><span>{request.amountPaid != null ? formatMoney(request.amountPaid) : "-"}</span>
+              <span className="text-muted-foreground">Method</span><span>{request.paymentMethod || "-"}</span>
+              <span className="text-muted-foreground">Reference</span><span>{request.paymentReference || "-"}</span>
+            </div>
+            {request.financeNotes && <p className="mt-2 text-xs text-muted-foreground">Finance note: {request.financeNotes}</p>}
+          </div>
 
           <div className="rounded-lg border border-border/70 p-3">
             <p className="mb-3 text-xs font-semibold uppercase text-muted-foreground">History</p>
@@ -368,7 +369,7 @@ export function ReimbursementDetailDialog({
           {payOpen && (
             <div className="space-y-3 rounded-lg border border-primary/40 bg-primary/5 p-3">
               <p className="text-sm font-semibold">Record payment</p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label htmlFor="paymentDate">Payment date</Label>
                   <Input id="paymentDate" type="date" value={payment.paymentDate} onChange={(e) => setPayment({ ...payment, paymentDate: e.target.value })} />
@@ -401,13 +402,14 @@ export function ReimbursementDetailDialog({
                   <Label htmlFor="authorizedByName2">Authorized by (2)</Label>
                   <Input id="authorizedByName2" value={payment.authorizedByName2} onChange={(e) => setPayment({ ...payment, authorizedByName2: e.target.value })} />
                 </div>
-                <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+                <div className="space-y-1 sm:col-span-2">
                   <Label htmlFor="financeNotes">Finance note</Label>
                   <Input id="financeNotes" value={payment.financeNotes} onChange={(e) => setPayment({ ...payment, financeNotes: e.target.value })} placeholder="Required when the amount differs from the approved total" />
                 </div>
               </div>
             </div>
           )}
+          </div>
           </div>
         </WorkspaceDialogBody>
 

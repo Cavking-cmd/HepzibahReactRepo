@@ -269,10 +269,10 @@
       right: auto !important;
       bottom: auto !important;
       left: 50% !important;
-      width: min(94vw, 52rem) !important;
-      max-width: min(94vw, 52rem) !important;
+      width: min(96vw, 56rem) !important;
+      max-width: min(96vw, 56rem) !important;
       height: auto !important;
-      max-height: min(90dvh, 50rem) !important;
+      max-height: min(93dvh, 52rem) !important;
       transform: translate(-50%, -50%) !important;
       border-radius: 1.15rem !important;
       box-shadow: 0 24px 64px oklch(0.2 0.032 267 / 0.18);
@@ -299,14 +299,23 @@
     }
   }
 
-  /* Landscape panel: wide and tall enough that the two-column body does the
-     scrolling instead of one long narrow column. */
+  /* Landscape panel: nearly the full window, noticeably wider than tall, so
+     the form reads left-to-right instead of one long narrow column. */
+  @media (min-width: 900px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      width: min(96vw, 76rem) !important;
+      max-width: min(96vw, 76rem) !important;
+      height: min(94dvh, 54rem) !important;
+      max-height: min(94dvh, 54rem) !important;
+    }
+  }
+
   @media (min-width: 1024px) {
     [data-slot="dialog-content"].workspace-dialog {
-      width: min(94vw, 82rem) !important;
-      max-width: min(94vw, 82rem) !important;
-      height: min(92dvh, 54rem) !important;
-      max-height: min(92dvh, 54rem) !important;
+      width: min(95vw, 84rem) !important;
+      max-width: min(95vw, 84rem) !important;
+      height: min(94dvh, 56rem) !important;
+      max-height: min(94dvh, 56rem) !important;
     }
 
     .workspace-dialog-header {
@@ -327,23 +336,31 @@
 
   @media (min-width: 1280px) {
     [data-slot="dialog-content"].workspace-dialog {
-      width: min(92vw, 88rem) !important;
-      max-width: min(92vw, 88rem) !important;
+      width: min(93vw, 90rem) !important;
+      max-width: min(93vw, 90rem) !important;
     }
   }
 
   @media (min-width: 1536px) {
     [data-slot="dialog-content"].workspace-dialog {
-      width: min(90vw, 96rem) !important;
-      max-width: min(90vw, 96rem) !important;
-      height: min(90dvh, 58rem) !important;
-      max-height: min(90dvh, 58rem) !important;
+      width: min(90vw, 98rem) !important;
+      max-width: min(90vw, 98rem) !important;
+      height: min(90dvh, 60rem) !important;
+      max-height: min(90dvh, 60rem) !important;
     }
   }
 
-  /* Two-column "landscape" body used by the reimbursement dialogs. On wide
-     screens the sidebar keeps receipts, totals, and history beside the main
-     content so there is far less vertical scrolling. */
+  /* Anyway the window gets short, the panel keeps its landscape proportions. */
+  @media (max-height: 700px) and (min-width: 640px) {
+    [data-slot="dialog-content"].workspace-dialog {
+      height: 96dvh !important;
+      max-height: 96dvh !important;
+    }
+  }
+
+  /* Two-column "landscape" body used by the reimbursement dialogs. The
+     sidebar keeps receipts, totals, and history beside the main content so
+     there is far less vertical scrolling. */
   .workspace-dialog-split {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -351,9 +368,36 @@
     align-items: start;
   }
 
+  @media (min-width: 960px) {
+    .workspace-dialog-split {
+      grid-template-columns: minmax(0, 1fr) 19rem;
+      gap: 1.5rem;
+    }
+  }
+
   @media (min-width: 1280px) {
     .workspace-dialog-split {
       grid-template-columns: minmax(0, 1fr) 22rem;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    .workspace-dialog-split {
+      grid-template-columns: minmax(0, 1fr) 24rem;
+    }
+  }
+
+  /* The request form needs a wider main column for its item table, so its
+     sidebar only appears once there is room for both. */
+  @media (max-width: 1279px) {
+    .workspace-dialog-split--late {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .workspace-dialog-split--late {
+      grid-template-columns: minmax(0, 1fr) 21rem;
       gap: 1.5rem;
     }
   }

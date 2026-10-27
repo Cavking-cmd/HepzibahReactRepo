@@ -237,7 +237,7 @@ export function ReimbursementFormDialog({
           }}
         >
           <WorkspaceDialogBody>
-          <div className="workspace-dialog-split">
+          <div className="workspace-dialog-split workspace-dialog-split--late">
           <div className="space-y-4">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             <div className="space-y-2">

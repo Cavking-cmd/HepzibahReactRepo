@@ -197,7 +197,7 @@ export function ReimbursementDetailDialog({
         <WorkspaceDialogBody>
           <div className="workspace-dialog-split text-sm">
           <div className="space-y-5">
-          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 rounded-xl border border-border/70 bg-muted/20 p-3 sm:grid-cols-2 2xl:grid-cols-3">
             <div><p className="text-xs text-muted-foreground">Payee</p><p className="font-medium">{request.payeeName}</p></div>
             <div><p className="text-xs text-muted-foreground">Department</p><p className="font-medium">{request.department}</p></div>
             <div><p className="text-xs text-muted-foreground">Minister in charge</p><p className="font-medium">{request.ministerInCharge}</p></div>
@@ -238,7 +238,7 @@ export function ReimbursementDetailDialog({
           </div>
 
           <div className="hidden overflow-x-auto rounded-xl border border-border/70 md:block">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[540px] text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Ref #</th>

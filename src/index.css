@@ -194,6 +194,11 @@
   /* Device-aware workspace dialogs (accounts / reimbursements).
      Phone: bottom sheet. Tablet: compact card. Desktop: wide landscape panel. */
   [data-slot="dialog-content"].workspace-dialog {
+    /* Tailwind v4 positions dialogs with the `translate` property, which the
+       minifier strips if we try to reset it directly. Zero the variables
+       instead so the panel is never shifted off-screen. */
+    --tw-translate-x: 0 !important;
+    --tw-translate-y: 0 !important;
     top: auto !important;
     right: 0 !important;
     bottom: 0 !important;
@@ -201,7 +206,9 @@
     display: flex;
     width: 100% !important;
     max-width: 100% !important;
+    height: 94vh !important;
     height: min(94dvh, 100%) !important;
+    max-height: 94vh !important;
     max-height: min(94dvh, 100%) !important;
     transform: none !important;
     flex-direction: column;
@@ -244,6 +251,7 @@
     flex: 1;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding: 1rem 1.15rem 1.25rem;
   }
 

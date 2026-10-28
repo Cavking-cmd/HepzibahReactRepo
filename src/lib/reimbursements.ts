@@ -1,4 +1,4 @@
-import { apiRequest, type ReceiptFileDto, type ReimbursementRequestDto } from "@/lib/api";
+import { apiRequest, ITEM_TYPE, type ReceiptFileDto, type ReimbursementRequestDto } from "@/lib/api";
 import {
   ALLOWED_RECEIPT_TYPES,
   emptyLine,
@@ -24,6 +24,7 @@ export function linesFromRequest(request: ReimbursementRequestDto | null): Reimb
       pst: item.pst ? String(item.pst) : "",
       hst: item.hst ? String(item.hst) : "",
       serialNumber: item.serialNumber ?? "",
+      itemType: item.itemType === ITEM_TYPE.Physical ? ("physical" as const) : ("service" as const),
     }));
 }
 

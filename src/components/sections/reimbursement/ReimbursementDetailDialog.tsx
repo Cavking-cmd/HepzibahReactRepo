@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { apiRequest, getTokenRoles, RS, type ReimbursementBudgetDto, type ReimbursementRequestDto } from "@/lib/api";
+import {
+  apiRequest,
+  getTokenRoles,
+  ITEM_TYPE,
+  RS,
+  VERIFICATION,
+  type ReimbursementBudgetDto,
+  type ReimbursementItemDto,
+  type ReimbursementRequestDto,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
   downloadReceipt,
@@ -50,7 +59,41 @@ const ACTION_LABELS: Record<string, string> = {
   Rejected: "Rejected",
   Approved: "Final approval given",
   Paid: "Payment confirmed",
+  ItemVerified: "Item verified by the Inventory Officer",
+  ItemRejected: "Item rejected by the Inventory Officer",
 };
+
+/** Item type and the Inventory Officer's result, shown under each line item. */
+function ItemCheck({ item }: { item: ReimbursementItemDto }) {
+  if (item.itemType !== ITEM_TYPE.Physical) {
+    return <p className="mt-0.5 text-xs text-muted-foreground">Service</p>;
+  }
+
+  const by = item.verifiedByName ? ` by ${item.verifiedByName}` : "";
+  return (
+    <div className="mt-0.5 space-y-0.5 text-xs">
+      <p className="text-muted-foreground">
+        Physical item{item.serialNumber ? ` · Serial ${item.serialNumber}` : ""}
+      </p>
+      {item.verificationStatus === VERIFICATION.Verified && (
+        <p className="text-emerald-700 dark:text-emerald-300">
+          Verified{by}{item.verifiedDate ? ` on ${formatDay(item.verifiedDate)}` : ""} · added to inventory
+        </p>
+      )}
+      {item.verificationStatus === VERIFICATION.Rejected && (
+        <p className="text-destructive">
+          Rejected{by}: {item.verificationNotes ?? "no reason given"}
+        </p>
+      )}
+      {item.verificationStatus === VERIFICATION.Pending && (
+        <p className="text-amber-700 dark:text-amber-300">Waiting for the Inventory Officer to verify</p>
+      )}
+      {item.verificationStatus === VERIFICATION.NotRequired && (
+        <p className="text-muted-foreground">Sent to the Inventory Officer when submitted</p>
+      )}
+    </div>
+  );
+}
 
 type ActionKind = "forward" | "return" | "reject" | "approve" | "pay";
 
@@ -61,6 +104,7 @@ interface ApprovalState {
   approvedAmount: string;
   notes: string;
   overBudgetJustification: string;
+  inventoryOverrideReason: string;
   preparedBy: string;
   chequeNumber: string;
   authorizedByName1: string;
@@ -127,6 +171,7 @@ export function ReimbursementDetailDialog({
     approvedAmount: "",
     notes: "",
     overBudgetJustification: "",
+    inventoryOverrideReason: "",
     preparedBy: "",
     chequeNumber: "",
     authorizedByName1: "",
@@ -157,6 +202,7 @@ export function ReimbursementDetailDialog({
       approvedAmount: String(request.totalAmount),
       notes: "",
       overBudgetJustification: "",
+      inventoryOverrideReason: "",
       preparedBy: request.preparedBy ?? "",
       chequeNumber: request.chequeNumber ?? "",
       authorizedByName1: request.authorizedByName1 ?? "",
@@ -211,7 +257,19 @@ export function ReimbursementDetailDialog({
   const approvedUnpaid = request.status === RS.Approved;
 
   const canOfficerAct = mode === "accountsOfficer" && underReview && !isOwn;
-  const canAdminDecide = mode === "accountsAdmin" && pendingApproval && !isOwn;
+  // The Accounts Admin can approve, return or reject straight from Under Review.
+  const canAdminDecide = mode === "accountsAdmin" && (pendingApproval || underReview) && !isOwn;
+
+  // Physical items the Inventory Officer hasn't verified (or rejected) block the
+  // officer's forward. The Accounts Admin can approve anyway with a written reason.
+  const inventoryOpen = underReview || pendingApproval;
+  const pendingChecks = inventoryOpen ? request.pendingVerificationCount ?? 0 : 0;
+  const rejectedChecks = inventoryOpen ? request.rejectedVerificationCount ?? 0 : 0;
+  const inventoryBlocked = pendingChecks > 0 || rejectedChecks > 0;
+  const inventoryMessage =
+    rejectedChecks > 0
+      ? `The Inventory Officer rejected ${rejectedChecks} item${rejectedChecks === 1 ? "" : "s"} on this request.`
+      : `${pendingChecks} physical item${pendingChecks === 1 ? " is" : "s are"} still waiting for the Inventory Officer to verify.`;
   const canAdminPay = mode === "accountsAdmin" && approvedUnpaid && !isOwn;
   const ownerCanEdit = isOwn && (request.status === RS.Draft || request.status === RS.ReturnedForCorrection);
 
@@ -282,12 +340,16 @@ export function ReimbursementDetailDialog({
         if (needsJustification && !approval.overBudgetJustification.trim()) {
           return setError("This is over budget. Enter a justification to approve it.");
         }
+        if (inventoryBlocked && !approval.inventoryOverrideReason.trim()) {
+          return setError("Enter the reason you are approving without inventory verification.");
+        }
         void post(
           "/approve",
           {
             approvedAmount: approvedAmountNumber,
             notes: approval.notes.trim() || null,
             overBudgetJustification: approval.overBudgetJustification.trim() || null,
+            inventoryOverrideReason: inventoryBlocked ? approval.inventoryOverrideReason.trim() : null,
             preparedBy: approval.preparedBy.trim() || null,
             chequeNumber: approval.chequeNumber.trim() || null,
             authorizedByName1: approval.authorizedByName1.trim() || null,
@@ -339,7 +401,7 @@ export function ReimbursementDetailDialog({
     forward: "Forward for Approval",
     return: "Return to Member",
     reject: "Reject Request",
-    approve: needsJustification ? "Approve Over Budget" : "Approve",
+    approve: inventoryBlocked ? "Approve with Override" : needsJustification ? "Approve Over Budget" : "Approve",
     pay: "Confirm Payment",
   };
 
@@ -401,9 +463,7 @@ export function ReimbursementDetailDialog({
                         <div>
                           <p className="text-xs text-muted-foreground">Ref #{item.referenceNumber}</p>
                           <p className="font-medium">{item.itemName}</p>
-                          {item.requiresSerialNumber && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">Serial: {item.serialNumber || "Not provided"}</p>
-                          )}
+                          <ItemCheck item={item} />
                         </div>
                         <p className="font-semibold tabular-nums">{formatMoney(item.total)}</p>
                       </div>
@@ -440,9 +500,7 @@ export function ReimbursementDetailDialog({
                           <td className="px-3 py-2 text-muted-foreground">{item.referenceNumber}</td>
                           <td className="px-3 py-2">
                             <p>{item.itemName}</p>
-                            {item.requiresSerialNumber && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">Serial: {item.serialNumber || "Not provided"}</p>
-                            )}
+                            <ItemCheck item={item} />
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums">{formatMoney(item.subtotal)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{formatMoney(item.gst)}</td>
@@ -464,6 +522,21 @@ export function ReimbursementDetailDialog({
                     </tfoot>
                   </table>
                 </div>
+
+                {isStaff && inventoryBlocked && (
+                  <div
+                    className={`rounded-lg border p-3 text-sm ${
+                      rejectedChecks > 0 ? "border-destructive/40 bg-destructive/5" : "border-amber-500/40 bg-amber-500/10"
+                    }`}
+                  >
+                    <p className="font-medium">{inventoryMessage}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {mode === "accountsAdmin"
+                        ? "You can still approve it, but you'll need to enter an override reason. It's recorded in the history."
+                        : "It can't be forwarded until every physical item is verified. You can return it to the member or reject it; an Accounts Admin can approve it with an override."}
+                    </p>
+                  </div>
+                )}
 
                 {request.remarks && (
                   <div>
@@ -556,6 +629,24 @@ export function ReimbursementDetailDialog({
                               placeholder="Why is this being approved over budget? This is recorded."
                             />
                           </div>
+                        )}
+                        {inventoryBlocked && (
+                          <div className="space-y-1 sm:col-span-2">
+                            <Label htmlFor="inventoryOverride" className="text-destructive">Inventory override reason *</Label>
+                            <textarea
+                              id="inventoryOverride"
+                              rows={2}
+                              className={`${textareaClass} border-destructive/60`}
+                              value={approval.inventoryOverrideReason}
+                              onChange={(e) => setApproval({ ...approval, inventoryOverrideReason: e.target.value })}
+                              placeholder="Why approve before the Inventory Officer has verified the items? This is recorded."
+                            />
+                          </div>
+                        )}
+                        {underReview && (
+                          <p className="text-xs text-muted-foreground sm:col-span-2">
+                            This request hasn't been forwarded by an Accounts Officer. You can approve it directly.
+                          </p>
                         )}
                         <div className="space-y-1">
                           <Label htmlFor="preparedBy">Prepared by</Label>
@@ -693,6 +784,11 @@ export function ReimbursementDetailDialog({
                       Approved over budget. Justification: {request.overBudgetJustification ?? "-"}
                     </p>
                   )}
+                  {request.inventoryOverride && (
+                    <p className="mt-1 text-xs text-destructive">
+                      Approved without full inventory verification. Reason: {request.inventoryOverrideReason ?? "-"}
+                    </p>
+                  )}
                   {request.financeNotes && <p className="mt-1 text-xs text-muted-foreground">Finance note: {request.financeNotes}</p>}
                 </div>
 
@@ -770,13 +866,18 @@ export function ReimbursementDetailDialog({
                 )}
 
                 {canOfficerAct && (
-                  <Button type="button" onClick={() => { setNote(""); setAction("forward"); }} disabled={busy || request.needsDepartmentLink}>
+                  <Button
+                    type="button"
+                    onClick={() => { setNote(""); setAction("forward"); }}
+                    disabled={busy || request.needsDepartmentLink || inventoryBlocked}
+                    title={inventoryBlocked ? inventoryMessage : undefined}
+                  >
                     Forward for Approval
                   </Button>
                 )}
 
                 {canAdminDecide && (
-                  <Button type="button" onClick={() => setAction("approve")} disabled={busy}>
+                  <Button type="button" onClick={() => setAction("approve")} disabled={busy || request.needsDepartmentLink}>
                     Approve
                   </Button>
                 )}

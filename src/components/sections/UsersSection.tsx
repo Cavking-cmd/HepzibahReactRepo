@@ -27,7 +27,39 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TablePagination } from "@/components/TablePagination";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+
+const ROLE_LABELS: Record<string, string> = {
+  AccountsAdmin: "Accounts Admin",
+  Admin: "Admin",
+  AccountsOfficer: "Accounts Officer",
+  ChurchMember: "Church Member",
+  AttendanceOfficer: "Attendance Officer",
+  FellowshipLeader: "Fellowship Leader",
+  InventoryOfficer: "Inventory Officer",
+};
+
+function RolePicker({ selected, onPick }: { selected: string[]; onPick: (role: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {ALL_ROLES.map((role) => (
+        <button
+          key={role}
+          type="button"
+          onClick={() => onPick(role)}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
+            selected.includes(role)
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {ROLE_LABELS[role] ?? role}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 const roleVariant = (role: string): "default" | "secondary" | "outline" => {
   if (role === "Admin") return "default";
@@ -46,6 +78,37 @@ export function UsersSection() {
   const [roles, setRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserDto | null>(null);
+  const [roleTarget, setRoleTarget] = useState<UserDto | null>(null);
+  const [newRoles, setNewRoles] = useState<string[]>([]);
+  const [savingRoles, setSavingRoles] = useState(false);
+
+  function openRoleEdit(user: UserDto) {
+    setRoleTarget(user);
+    setNewRoles(user.userRoles.filter((r) => ALL_ROLES.includes(r)));
+  }
+
+  async function saveRoles() {
+    if (!roleTarget) return;
+    if (newRoles.length === 0) {
+      toast.error("Select a role.");
+      return;
+    }
+    setSavingRoles(true);
+    const result = await apiRequest("PUT", `/api/User/${roleTarget.id}/roles`, { roles: newRoles });
+    setSavingRoles(false);
+    if (result.ok) {
+      toast.success(result.body?.message ?? "Role updated.");
+      setRoleTarget(null);
+      refresh();
+    } else {
+      toast.error(result.body?.message ?? "The role could not be updated.");
+    }
+  }
+
+  const rolesUnchanged =
+    !!roleTarget &&
+    newRoles.length === roleTarget.userRoles.length &&
+    newRoles.every((r) => roleTarget.userRoles.includes(r));
 
   function openCreate() {
     setForm({ email: "", password: "" });
@@ -128,13 +191,16 @@ setRoles((prev) => (prev.includes(role) ? [] : [role]));
                     <div className="flex flex-wrap gap-1">
                       {user.userRoles.map((role) => (
                         <Badge key={role} variant={roleVariant(role)}>
-                          {role}
+                          {ROLE_LABELS[role] ?? role}
                         </Badge>
                       ))}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon-sm" onClick={() => openRoleEdit(user)} title="Change role" aria-label="Change role">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                       <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(user)}>
                         <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
@@ -186,23 +252,7 @@ setRoles((prev) => (prev.includes(role) ? [] : [role]));
             </div>
             <div className="space-y-1.5">
               <Label>Roles</Label>
-              <div className="flex flex-wrap gap-2">
-                {ALL_ROLES.map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => toggleRole(role)}
-                    className={cn(
-                      "inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
-                      roles.includes(role)
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    {role}
-                  </button>
-                ))}
-              </div>
+              <RolePicker selected={roles} onPick={toggleRole} />
             </div>
 
             <DialogFooter>
@@ -211,6 +261,37 @@ setRoles((prev) => (prev.includes(role) ? [] : [role]));
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!roleTarget} onOpenChange={(open) => !open && !savingRoles && setRoleTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change role</DialogTitle>
+          </DialogHeader>
+          {roleTarget && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {roleTarget.displayName ? `${roleTarget.displayName} (${roleTarget.email})` : roleTarget.email}
+              </p>
+              <div className="space-y-1.5">
+                <Label>New role</Label>
+                <RolePicker selected={newRoles} onPick={(role) => setNewRoles([role])} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Only the role changes; their email, password and history stay the same. They'll need to sign out and sign
+                back in to see their new dashboard.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleTarget(null)} disabled={savingRoles}>
+              Cancel
+            </Button>
+            <Button onClick={() => void saveRoles()} disabled={savingRoles || rolesUnchanged}>
+              {savingRoles ? "Saving…" : "Save Role"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -227,4 +308,4 @@ setRoles((prev) => (prev.includes(role) ? [] : [role]));
       />
     </div>
   );
-}
+}

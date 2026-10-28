@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { DashboardLayout, type NavSection } from "@/components/layout/DashboardLayout";
 import { InventorySection } from "@/components/sections/InventorySection";
+import { InventoryVerificationSection } from "@/components/sections/InventoryVerificationSection";
 import { ReimbursementSection } from "@/components/sections/ReimbursementSection";
-import { Package, Receipt } from "lucide-react";
+import { Package, PackageCheck, Receipt } from "lucide-react";
 
 const SECTIONS: NavSection[] = [
+  { id: "verify", label: "Items to Verify", icon: PackageCheck },
   { id: "inventory", label: "Inventory", icon: Package },
   { id: "reimbursements", label: "My Reimbursements", icon: Receipt },
 ];
 
 export default function InventoryOfficerDashboard() {
-  const [activeSection, setActiveSection] = useState("inventory");
+  const [activeSection, setActiveSection] = useState("verify");
 
   return (
     <DashboardLayout
@@ -20,6 +22,7 @@ export default function InventoryOfficerDashboard() {
       activeSection={activeSection}
       onSectionChange={setActiveSection}
     >
+      {activeSection === "verify" && <InventoryVerificationSection />}
       {activeSection === "inventory" && <InventorySection canWrite />}
       {activeSection === "reimbursements" && <ReimbursementSection mode="member" />}
     </DashboardLayout>

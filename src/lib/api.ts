@@ -463,6 +463,42 @@ export interface ReimbursementItemDto {
   requiresSerialNumber: boolean;
   serialNumber: string | null;
   screeningNote: string | null;
+  itemType: ReimbursementItemType;
+  verificationStatus: VerificationStatus;
+  verifiedByName: string | null;
+  verifiedDate: string | null;
+  verificationNotes: string | null;
+  inventoryItemId: string | null;
+}
+
+/** 0 = service (labour, rental, food, subscription), 1 = physical item that goes to inventory. */
+export type ReimbursementItemType = 0 | 1;
+export const ITEM_TYPE = { Service: 0, Physical: 1 } as const;
+
+/** Inventory Officer's check of a physical item. */
+export type VerificationStatus = 0 | 1 | 2 | 3;
+export const VERIFICATION = { NotRequired: 0, Pending: 1, Verified: 2, Rejected: 3 } as const;
+
+/** One physical item as the Inventory Officer sees it. */
+export interface InventoryVerificationItemDto {
+  itemId: string;
+  reimbursementRequestId: string;
+  requestNumber: string;
+  requestStatus: number;
+  payeeName: string;
+  department: string;
+  requestDate: string;
+  submittedDate: string | null;
+  referenceNumber: number;
+  itemName: string;
+  serialNumber: string | null;
+  total: number;
+  verificationStatus: VerificationStatus;
+  verifiedByName: string | null;
+  verifiedDate: string | null;
+  verificationNotes: string | null;
+  inventoryItemId: string | null;
+  receipts: ReimbursementReceiptDto[];
 }
 
 export interface ReimbursementReceiptDto {
@@ -519,6 +555,12 @@ export interface ReimbursementRequestDto {
   approvalNotes: string | null;
   overBudgetAtApproval: boolean;
   overBudgetJustification: string | null;
+  inventoryOverride: boolean;
+  inventoryOverrideReason: string | null;
+  /** Physical items still waiting for the Inventory Officer. */
+  pendingVerificationCount: number;
+  /** Physical items the Inventory Officer rejected. */
+  rejectedVerificationCount: number;
   paymentDate: string | null;
   paymentConfirmedAt: string | null;
   paidByName: string | null;

@@ -4,6 +4,7 @@ import {
   apiList,
   apiRequest,
   CLASSIFICATION,
+  ITEM_TYPE,
   type DepartmentOptionDto,
   type ReimbursementRequestDto,
 } from "@/lib/api";
@@ -16,8 +17,9 @@ import {
   linesFromRequest,
   MAX_REIMBURSEMENT_ITEMS,
   readReceiptFile,
-  requiresSerialNumber,
+  SERIAL_PLACEHOLDER,
   todayInput,
+  type LineItemType,
   type ReceiptUpload,
   type ReimbursementLine,
 } from "@/lib/reimbursements";
@@ -38,6 +40,49 @@ import { Plus, Trash2, Upload, FileText } from "lucide-react";
 import { SearchSelect } from "@/components/SearchSelect";
 
 const PERSONAL_USE = "personal";
+
+const selectClass =
+  "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
+/** Physical/Service choice plus the optional serial number, shared by the mobile and desktop rows. */
+function ItemTypeFields({
+  line,
+  onChange,
+}: {
+  line: ReimbursementLine;
+  onChange: (patch: Partial<ReimbursementLine>) => void;
+}) {
+  return (
+    <div className="mt-2 space-y-2">
+      <select
+        aria-label="Item type"
+        className={`${selectClass} ${line.itemName.trim() && !line.itemType ? "border-destructive" : ""}`}
+        value={line.itemType}
+        onChange={(e) => {
+          const itemType = e.target.value as LineItemType;
+          onChange(itemType === "physical" ? { itemType } : { itemType, serialNumber: "" });
+        }}
+      >
+        <option value="">Physical item or service?</option>
+        <option value="physical">Physical item (goes to inventory)</option>
+        <option value="service">Service (labour, rental, food, subscription...)</option>
+      </select>
+      {line.itemType === "physical" && (
+        <div>
+          <Input
+            value={line.serialNumber}
+            onChange={(e) => onChange({ serialNumber: e.target.value })}
+            placeholder={SERIAL_PLACEHOLDER}
+            maxLength={100}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Fill in only if the item already has a serial number on it. The Inventory Officer will be asked to verify this item.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ReimbursementFormDialogProps {
   open: boolean;
@@ -178,7 +223,8 @@ export function ReimbursementFormDialog({
         gst: lineAmount(line.gst),
         pst: lineAmount(line.pst),
         hst: lineAmount(line.hst),
-        serialNumber: line.serialNumber.trim() || null,
+        itemType: line.itemType === "physical" ? ITEM_TYPE.Physical : ITEM_TYPE.Service,
+        serialNumber: line.itemType === "physical" ? line.serialNumber.trim() || null : null,
       }));
 
     if (items.length === 0) {
@@ -186,15 +232,13 @@ export function ReimbursementFormDialog({
       return;
     }
 
-    if (submit) {
-      const missingSerial = form.lines.find(
-        (line) => line.itemName.trim() && requiresSerialNumber(line.itemName) && !line.serialNumber.trim(),
-      );
-      if (missingSerial) {
-        toast.error(`Enter the serial number for "${missingSerial.itemName.trim()}" before submitting.`);
-        return;
-      }
+    const untyped = form.lines.find((line) => line.itemName.trim() && !line.itemType);
+    if (untyped) {
+      toast.error(`Choose whether "${untyped.itemName.trim()}" is a physical item or a service.`);
+      return;
+    }
 
+    if (submit) {
       if (existingReceipts.length + newReceipts.length === 0) {
         toast.error("Attach at least one invoice or receipt before submitting.");
         return;
@@ -339,6 +383,7 @@ export function ReimbursementFormDialog({
                 <p className="text-sm font-medium">Items purchased</p>
                 <p className="text-xs text-muted-foreground">
                   Enter GST, PST and HST exactly as shown on the invoice or receipt. Use zero where not applicable.
+                  Mark each item as a physical item or a service.
                 </p>
               </div>
               <Button
@@ -355,7 +400,6 @@ export function ReimbursementFormDialog({
 
             <div className="space-y-3 p-3 md:hidden">
               {form.lines.map((line, index) => {
-                const serialRequired = requiresSerialNumber(line.itemName);
                 return (
                   <div key={index} className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-3">
                     <div className="flex items-center justify-between gap-2">
@@ -370,24 +414,14 @@ export function ReimbursementFormDialog({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Input
-                      value={line.itemName}
-                      onChange={(e) => updateLine(index, { itemName: e.target.value })}
-                      placeholder="What was purchased?"
-                    />
-                    {serialRequired && (
-                      <div>
-                        <Input
-                          value={line.serialNumber}
-                          onChange={(e) => updateLine(index, { serialNumber: e.target.value })}
-                          placeholder="Serial number (required)"
-                          className={line.serialNumber.trim() ? "" : "border-destructive"}
-                        />
-                        <p className="mt-1 text-xs text-destructive">
-                          Serialised equipment detected. A serial number is required before submission.
-                        </p>
-                      </div>
-                    )}
+                    <div>
+                      <Input
+                        value={line.itemName}
+                        onChange={(e) => updateLine(index, { itemName: e.target.value })}
+                        placeholder="What was purchased?"
+                      />
+                      <ItemTypeFields line={line} onChange={(patch) => updateLine(index, patch)} />
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <Label>Subtotal</Label>
@@ -431,7 +465,6 @@ export function ReimbursementFormDialog({
                 </thead>
                 <tbody>
                   {form.lines.map((line, index) => {
-                    const serialRequired = requiresSerialNumber(line.itemName);
                     return (
                       <tr key={index} className="border-t border-border/60 align-top">
                         <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
@@ -441,19 +474,7 @@ export function ReimbursementFormDialog({
                             onChange={(e) => updateLine(index, { itemName: e.target.value })}
                             placeholder="What was purchased?"
                           />
-                          {serialRequired && (
-                            <div className="mt-2">
-                              <Input
-                                value={line.serialNumber}
-                                onChange={(e) => updateLine(index, { serialNumber: e.target.value })}
-                                placeholder="Serial number (required)"
-                                className={line.serialNumber.trim() ? "" : "border-destructive"}
-                              />
-                              <p className="mt-1 text-xs text-destructive">
-                                Serialised equipment detected. A serial number is required before submission.
-                              </p>
-                            </div>
-                          )}
+                          <ItemTypeFields line={line} onChange={(patch) => updateLine(index, patch)} />
                         </td>
                         <td className="px-3 py-2">
                           <Input

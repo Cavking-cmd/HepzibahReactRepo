@@ -9,8 +9,15 @@ export interface ReimbursementLine {
   gst: string;
   pst: string;
   hst: string;
+  /** Optional. Only for items that already have a serial number printed on them. */
   serialNumber: string;
+  /** "" until chosen. Physical items go to the Inventory Officer to verify. */
+  itemType: LineItemType;
 }
+
+export type LineItemType = "" | "physical" | "service";
+
+export const SERIAL_PLACEHOLDER = "Serial number (optional) - only if the item already has one";
 
 export interface ReceiptUpload {
   fileName: string;
@@ -27,6 +34,7 @@ export const emptyLine = (referenceNumber: number): ReimbursementLine => ({
   pst: "",
   hst: "",
   serialNumber: "",
+  itemType: "",
 });
 
 const SERIAL_KEYWORDS = [
@@ -152,7 +160,7 @@ export function nextStepText(status: number): string {
       return "Draft. Submit it when your receipts are attached.";
     case 1:
     case 2:
-      return "Submitted and awaiting review by an Accounts Officer.";
+      return "Submitted and awaiting review by the Accounts team. Physical items are also checked by the Inventory Officer.";
     case 7:
       return "Passed accounts review. Waiting for final approval. Not approved or paid yet.";
     case 3:

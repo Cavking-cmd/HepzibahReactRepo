@@ -14,8 +14,10 @@ import {
 
 interface AccountsApprovalDashboardProps {
   /**
-   * "review" = the Accounts Officer's queue (an Accounts Admin can watch it, read-only).
-   * "final" = Accounts Admin approval and payment queue.
+   * "review" = the Accounts Officer's queue. An Accounts Admin can open it too and approve,
+   * return or reject from there; only the officer forwards.
+   * "final" = Accounts Admin approval and payment queue, including Under Review items
+   * the admin can approve directly.
    */
   stage: "review" | "final";
 }
@@ -75,6 +77,11 @@ function QueueTable({ rows, status, empty, amountLabel, amountOf, actionLabel, c
                 <TableCell>
                   {request.department}
                   {request.needsDepartmentLink && <span className="block text-xs text-amber-700 dark:text-amber-300">not linked</span>}
+                  {(request.rejectedVerificationCount ?? 0) > 0 ? (
+                    <span className="block text-xs text-destructive">Inventory rejected an item</span>
+                  ) : (request.pendingVerificationCount ?? 0) > 0 ? (
+                    <span className="block text-xs text-amber-700 dark:text-amber-300">Waiting for inventory check</span>
+                  ) : null}
                 </TableCell>
                 <TableCell>
                   <span className={days !== null && days > 14 ? "font-medium text-destructive" : ""}>
@@ -111,8 +118,8 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
   const [detail, setDetail] = useState<ReimbursementRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Only an Accounts Officer can act on the review queue. Anyone else (an Accounts Admin
-  // watching it) opens requests in Accounts Admin mode, where Under Review items are read-only.
+  // An Accounts Officer reviews and forwards. An Accounts Admin (without the officer role)
+  // opens requests in Accounts Admin mode and can approve them directly.
   const canReview = hasRole("AccountsOfficer");
   const watchingReview = stage === "review" && !canReview;
   const mode: ReimbursementMode = stage === "review" && canReview ? "accountsOfficer" : "accountsAdmin";
@@ -156,14 +163,14 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
   const tiles =
     stage === "review"
       ? [
-          { label: watchingReview ? "Waiting for accounts review" : "Waiting for your review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
+          { label: watchingReview ? "Under review" : "Waiting for your review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
           { label: "With the member for correction", count: returned.length, amount: sum(returned, (r) => r.totalAmount), icon: Undo2 },
           { label: "Forwarded, awaiting final approval", count: pendingApproval.length, amount: sum(pendingApproval, (r) => r.totalAmount), icon: ClipboardCheck },
         ]
       : [
           { label: "Waiting for final approval", count: pendingApproval.length, amount: sum(pendingApproval, (r) => r.totalAmount), icon: ClipboardCheck },
           { label: "Approved, awaiting payment", count: approved.length, amount: sum(approved, (r) => r.approvedAmount ?? r.totalAmount), icon: CreditCard },
-          { label: "Still under accounts review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
+          { label: "Under review (you can approve directly)", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
         ];
 
   return (
@@ -172,10 +179,10 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
         <h2 className="text-xl font-semibold">{stage === "review" ? "Review Queue" : "Final Approval & Payment"}</h2>
         <p className="text-sm text-muted-foreground">
           {watchingReview
-            ? "What the Accounts Officer is working on. These requests reach your Final Approval queue once they are forwarded. You can open them to look, but only an Accounts Officer can forward, return or reject at this stage."
+            ? "Requests the Accounts Officer is working on. You don't have to wait for them to be forwarded: open one to approve it directly, return it or reject it."
             : stage === "review"
             ? "Check receipts and the department budget, then forward each request for final approval, return it for correction, or reject it."
-            : "Give final approval to requests that passed accounts review, then confirm payment once the money has actually been sent."}
+            : "Approve requests (forwarded by the Accounts Officer, or straight from Under Review), then confirm payment once the money has actually been sent."}
         </p>
       </div>
 
@@ -213,7 +220,7 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
               empty="Nothing is waiting for review."
               amountLabel="Requested"
               amountOf={(r) => r.totalAmount}
-              actionLabel={watchingReview ? "View" : "Review"}
+              actionLabel={watchingReview ? "Decide" : "Review"}
               currentUserId={user?.id}
               onOpen={open}
             />
@@ -233,6 +240,29 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
                 rows={pendingApproval}
                 status={RS.PendingApproval}
                 empty="Nothing is waiting for final approval."
+                amountLabel="Requested"
+                amountOf={(r) => r.totalAmount}
+                actionLabel="Decide"
+                currentUserId={user?.id}
+                onOpen={open}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileSearch className="h-5 w-5" /> Under Review ({underReview.length})
+              </CardTitle>
+              <CardDescription>
+                Not forwarded yet. You can approve directly, return or reject. Requests with unverified physical items need an override reason.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QueueTable
+                rows={underReview}
+                status={RS.UnderReview}
+                empty="Nothing is under review."
                 amountLabel="Requested"
                 amountOf={(r) => r.totalAmount}
                 actionLabel="Decide"

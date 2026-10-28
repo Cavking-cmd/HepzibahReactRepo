@@ -13,7 +13,10 @@ import {
 } from "@/components/sections/reimbursement/ReimbursementDetailDialog";
 
 interface AccountsApprovalDashboardProps {
-  /** "review" = Accounts Officer queue. "final" = Accounts Admin approval and payment queue. */
+  /**
+   * "review" = the Accounts Officer's queue (an Accounts Admin can watch it, read-only).
+   * "final" = Accounts Admin approval and payment queue.
+   */
   stage: "review" | "final";
 }
 
@@ -102,13 +105,17 @@ function QueueTable({ rows, status, empty, amountLabel, amountOf, actionLabel, c
 }
 
 export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardProps) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const [requests, setRequests] = useState<ReimbursementRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<ReimbursementRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const mode: ReimbursementMode = stage === "review" ? "accountsOfficer" : "accountsAdmin";
+  // Only an Accounts Officer can act on the review queue. Anyone else (an Accounts Admin
+  // watching it) opens requests in Accounts Admin mode, where Under Review items are read-only.
+  const canReview = hasRole("AccountsOfficer");
+  const watchingReview = stage === "review" && !canReview;
+  const mode: ReimbursementMode = stage === "review" && canReview ? "accountsOfficer" : "accountsAdmin";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,7 +156,7 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
   const tiles =
     stage === "review"
       ? [
-          { label: "Waiting for your review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
+          { label: watchingReview ? "Waiting for accounts review" : "Waiting for your review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
           { label: "With the member for correction", count: returned.length, amount: sum(returned, (r) => r.totalAmount), icon: Undo2 },
           { label: "Forwarded, awaiting final approval", count: pendingApproval.length, amount: sum(pendingApproval, (r) => r.totalAmount), icon: ClipboardCheck },
         ]
@@ -164,7 +171,9 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
       <div>
         <h2 className="text-xl font-semibold">{stage === "review" ? "Review Queue" : "Final Approval & Payment"}</h2>
         <p className="text-sm text-muted-foreground">
-          {stage === "review"
+          {watchingReview
+            ? "What the Accounts Officer is working on. These requests reach your Final Approval queue once they are forwarded. You can open them to look, but only an Accounts Officer can forward, return or reject at this stage."
+            : stage === "review"
             ? "Check receipts and the department budget, then forward each request for final approval, return it for correction, or reject it."
             : "Give final approval to requests that passed accounts review, then confirm payment once the money has actually been sent."}
         </p>
@@ -204,7 +213,7 @@ export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardPr
               empty="Nothing is waiting for review."
               amountLabel="Requested"
               amountOf={(r) => r.totalAmount}
-              actionLabel="Review"
+              actionLabel={watchingReview ? "View" : "Review"}
               currentUserId={user?.id}
               onOpen={open}
             />

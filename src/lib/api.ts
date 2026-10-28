@@ -12,6 +12,26 @@ export function getToken(): string {
   return localStorage.getItem("token") || "";
 }
 
+/**
+ * Roles inside the signed-in token, which is what the server actually checks.
+ * These can differ from the roles shown in the app if the token is from an older sign-in.
+ */
+export function getTokenRoles(): string[] {
+  const token = getToken();
+  const part = token.split(".")[1];
+  if (!part) return [];
+  try {
+    const json = atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "="));
+    const claims = JSON.parse(json) as Record<string, unknown>;
+    const raw =
+      claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ?? claims["role"] ?? claims["roles"];
+    if (Array.isArray(raw)) return raw.map(String);
+    return typeof raw === "string" ? [raw] : [];
+  } catch {
+    return [];
+  }
+}
+
 export interface AuthUser {
   id: string;
   email: string;

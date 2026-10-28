@@ -28,10 +28,15 @@ import {
   Building2,
   LineChart,
   UserRound,
+  Receipt,
+  FileSearch,
 } from "lucide-react";
 
-const SECTIONS: NavSection[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
+const OVERVIEW: NavSection = { id: "overview", label: "Overview", icon: LayoutDashboard };
+const REPORTS: NavSection = { id: "reports", label: "Reports", icon: BarChart3 };
+
+/** Church administration sections. Shown to the Admin role. */
+const ADMIN_SECTIONS: NavSection[] = [
   { id: "services", label: "Services", icon: Calendar },
   { id: "attendance", label: "Attendance", icon: Users },
   { id: "pastors", label: "Pastors", icon: UserRound },
@@ -39,46 +44,71 @@ const SECTIONS: NavSection[] = [
   { id: "fellowship-attendance", label: "Fellowship Attendance", icon: ClipboardList },
   { id: "inventory", label: "Inventory", icon: Package },
   { id: "users", label: "Users & Roles", icon: UserPlus },
-  { id: "reports", label: "Reports", icon: BarChart3 },
+];
+
+/**
+ * Accounts Admin: everything on the Accounts Officer page (review queue, all
+ * reimbursements, department budgets, financial reports), plus final approval and
+ * payment, plus Overview and Reports from the admin page.
+ */
+const ACCOUNTS_SECTIONS: NavSection[] = [
+  { id: "final-approval", label: "Final Approval & Payment", icon: ClipboardCheck },
+  { id: "review", label: "Review Queue", icon: FileSearch },
+  { id: "accounts", label: "All Reimbursements", icon: Wallet },
+  { id: "departments", label: "Department Budgets", icon: Building2 },
+  { id: "finance", label: "Financial Reports", icon: LineChart },
 ];
 
 export default function AdminDashboard() {
   const { hasRole } = useAuth();
   const [activeSection, setActiveSection] = useState("overview");
-  const canManageAccounts = hasRole("AccountsAdmin");
+  const isAccountsAdmin = hasRole("AccountsAdmin");
+  const isAdmin = hasRole("Admin");
+  // Church administration shows for Admins. Someone who is only an Accounts Admin gets the
+  // accounts dashboard on its own; someone with both roles gets both.
+  const showAdminSections = isAdmin || !isAccountsAdmin;
 
-  // Accounts Payable belongs to the AccountsAdmin role only; plain Admin does not see it.
-  const sections = canManageAccounts
-    ? [
-        ...SECTIONS,
-        { id: "final-approval", label: "Final Approval & Payment", icon: ClipboardCheck },
-        { id: "accounts", label: "All Reimbursements", icon: Wallet },
-        { id: "departments", label: "Departments & Budgets", icon: Building2 },
-        { id: "finance", label: "Financial Reports", icon: LineChart },
-      ]
-    : SECTIONS;
+  const sections: NavSection[] = [
+    OVERVIEW,
+    ...(isAccountsAdmin ? ACCOUNTS_SECTIONS : []),
+    ...(showAdminSections ? ADMIN_SECTIONS : []),
+    REPORTS,
+    // Accounts Admins see their own requests in All Reimbursements, so only plain Admins need this.
+    ...(isAccountsAdmin ? [] : [{ id: "my-reimbursements", label: "My Reimbursements", icon: Receipt }]),
+  ];
+
+  const visible = new Set(sections.map((s) => s.id));
+  const show = (id: string) => activeSection === id && visible.has(id);
+
+  // Overview links inventory alerts to the Inventory section; only offer that when it exists.
+  const navigateFromOverview = visible.has("inventory") ? setActiveSection : undefined;
 
   return (
     <DashboardLayout
-      title={canManageAccounts ? "Accounts Administrator" : "Admin"}
-      roleLabel={canManageAccounts ? "Administrator" : "Administrator"}
+      title={isAccountsAdmin && !isAdmin ? "Accounts Administrator" : "Admin"}
+      roleLabel={isAccountsAdmin ? "Accounts Admin" : "Administrator"}
       sections={sections}
       activeSection={activeSection}
       onSectionChange={setActiveSection}
     >
-      {activeSection === "overview" && <OverviewSection onNavigate={setActiveSection} />}
-      {activeSection === "services" && <ServicesSection canWrite />}
-      {activeSection === "attendance" && <AttendanceSection canWrite canApprove />}
-      {activeSection === "centers" && <FellowshipCentersSection canWrite />}
-      {activeSection === "fellowship-attendance" && <FellowshipAttendanceSection canWrite canApprove />}
-      {activeSection === "inventory" && <InventorySection canWrite />}
-      {activeSection === "users" && <UsersSection />}
-      {activeSection === "pastors" && <PastorsSection />}
-      {activeSection === "final-approval" && canManageAccounts && <AccountsApprovalDashboard stage="final" />}
-      {activeSection === "accounts" && canManageAccounts && <ReimbursementSection mode="accountsAdmin" />}
-      {activeSection === "departments" && canManageAccounts && <DepartmentsSection canManage />}
-      {activeSection === "finance" && canManageAccounts && <FinancialReports />}
-      {activeSection === "reports" && <ReportsSection />}
+      {show("overview") && <OverviewSection onNavigate={navigateFromOverview} />}
+
+      {show("final-approval") && <AccountsApprovalDashboard stage="final" />}
+      {show("review") && <AccountsApprovalDashboard stage="review" />}
+      {show("accounts") && <ReimbursementSection mode="accountsAdmin" />}
+      {show("departments") && <DepartmentsSection canManage />}
+      {show("finance") && <FinancialReports />}
+
+      {show("services") && <ServicesSection canWrite />}
+      {show("attendance") && <AttendanceSection canWrite canApprove />}
+      {show("pastors") && <PastorsSection />}
+      {show("centers") && <FellowshipCentersSection canWrite />}
+      {show("fellowship-attendance") && <FellowshipAttendanceSection canWrite canApprove />}
+      {show("inventory") && <InventorySection canWrite />}
+      {show("users") && <UsersSection />}
+
+      {show("reports") && <ReportsSection />}
+      {show("my-reimbursements") && <ReimbursementSection mode="member" />}
     </DashboardLayout>
   );
 }

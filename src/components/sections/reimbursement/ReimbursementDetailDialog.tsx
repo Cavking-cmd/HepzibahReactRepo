@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { apiRequest, RS, type ReimbursementBudgetDto, type ReimbursementRequestDto } from "@/lib/api";
+import { apiRequest, getTokenRoles, RS, type ReimbursementBudgetDto, type ReimbursementRequestDto } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
   downloadReceipt,
@@ -78,6 +78,25 @@ interface PaymentState {
   authorizedByName2: string;
   authorizationDate: string;
   financeNotes: string;
+}
+
+/** Which role the server needs for each action, used to explain a 403. */
+const REQUIRED_ROLE: Record<string, string> = {
+  "/review": "AccountsOfficer",
+  "/approve": "AccountsAdmin",
+  "/payment": "AccountsAdmin",
+};
+
+const ROLE_NAMES: Record<string, string> = { AccountsOfficer: "Accounts Officer", AccountsAdmin: "Accounts Admin" };
+
+function forbiddenMessage(path: string): string {
+  const needed = REQUIRED_ROLE[path];
+  const tokenRoles = getTokenRoles();
+  if (needed && !tokenRoles.includes(needed)) {
+    const has = tokenRoles.length ? tokenRoles.join(", ") : "no roles";
+    return `The server sees your sign-in as ${has}, not ${ROLE_NAMES[needed]}. Sign out and sign back in. If it still happens, check this account has the ${ROLE_NAMES[needed]} role.`;
+  }
+  return "The server refused this action (403). Sign out and sign back in, then try again.";
 }
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -208,7 +227,9 @@ export function ReimbursementDetailDialog({
     if (!result.ok) {
       const message =
         result.httpStatus === 403
-          ? "You don't have permission to do that."
+          ? forbiddenMessage(path)
+          : result.httpStatus === 401
+          ? "Your sign-in has expired. Sign out and sign back in, then try again."
           : result.body?.message ?? "The action could not be completed.";
       setError(message);
       toast.error(message);

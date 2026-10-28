@@ -1,7 +1,10 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
+  apiList,
   apiRequest,
+  CLASSIFICATION,
+  type DepartmentOptionDto,
   type ReimbursementRequestDto,
 } from "@/lib/api";
 import {
@@ -32,6 +35,9 @@ import {
   WorkspaceDialogShell,
 } from "@/components/ui/workspace-dialog";
 import { Plus, Trash2, Upload, FileText } from "lucide-react";
+import { SearchSelect } from "@/components/SearchSelect";
+
+const PERSONAL_USE = "personal";
 
 interface ReimbursementFormDialogProps {
   open: boolean;
@@ -42,6 +48,7 @@ interface ReimbursementFormDialogProps {
 
 interface FormState {
   payeeName: string;
+  /** Department id, or "personal" for Personal Use. Empty until chosen. */
   department: string;
   ministerInCharge: string;
   requestDate: string;
@@ -69,15 +76,36 @@ export function ReimbursementFormDialog({
   const [form, setForm] = useState<FormState>(emptyForm);
   const [newReceipts, setNewReceipts] = useState<ReceiptUpload[]>([]);
   const [saving, setSaving] = useState<"draft" | "submit" | null>(null);
+  const [departments, setDepartments] = useState<DepartmentOptionDto[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    void apiList<DepartmentOptionDto>("/api/Departments/options").then((list) => {
+      if (cancelled) return;
+      setDepartments(list);
+      setDepartmentsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
 
+    setDepartmentError(null);
     setForm(
       editing
         ? {
             payeeName: editing.payeeName,
-            department: editing.department,
+            department:
+              editing.classification === CLASSIFICATION.PersonalUse
+                ? PERSONAL_USE
+                : editing.departmentId ?? "",
             ministerInCharge: editing.ministerInCharge,
             requestDate: editing.requestDate.slice(0, 10),
             remarks: editing.remarks ?? "",
@@ -132,7 +160,11 @@ export function ReimbursementFormDialog({
   }
 
   async function handleSave(submit: boolean) {
-    if (!form.payeeName.trim() || !form.department.trim() || !form.ministerInCharge.trim()) {
+    if (!form.department) {
+      setDepartmentError("Choose a department, or Personal Use if this is not for a church department.");
+    }
+
+    if (!form.payeeName.trim() || !form.department || !form.ministerInCharge.trim()) {
       toast.error("Payee name, department and minister in charge are required.");
       return;
     }
@@ -171,9 +203,11 @@ export function ReimbursementFormDialog({
 
     setSaving(submit ? "submit" : "draft");
 
+    const isPersonal = form.department === PERSONAL_USE;
     const payload = {
       payeeName: form.payeeName.trim(),
-      department: form.department.trim(),
+      classification: isPersonal ? CLASSIFICATION.PersonalUse : CLASSIFICATION.Department,
+      departmentId: isPersonal ? null : form.department,
       ministerInCharge: form.ministerInCharge.trim(),
       requestDate: form.requestDate || todayInput(),
       remarks: form.remarks.trim() || null,
@@ -209,7 +243,7 @@ export function ReimbursementFormDialog({
         return;
       }
 
-      toast.success("Reimbursement submitted for minister approval.");
+      toast.success("Submitted. Your request is now under review by an Accounts Officer.");
     } else {
       toast.success("Reimbursement saved as a draft.");
     }
@@ -251,15 +285,34 @@ export function ReimbursementFormDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Input
+              <SearchSelect
                 id="department"
                 value={form.department}
-                onChange={(e) => setForm({ ...form, department: e.target.value })}
-                required
+                onChange={(value) => {
+                  setForm((prev) => ({ ...prev, department: value }));
+                  setDepartmentError(null);
+                }}
+                options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                pinnedOptions={[
+                  { value: PERSONAL_USE, label: "Personal Use", hint: "Not for a church department" },
+                ]}
+                placeholder="Choose a department"
+                searchPlaceholder="Search departments"
+                emptyText="No department matches. Choose Personal Use if it is not for a department."
+                loading={departmentsLoading}
+                invalid={!!departmentError}
+                fallbackLabel={editing?.department}
               />
+              {departmentError ? (
+                <p className="text-xs text-destructive">{departmentError}</p>
+              ) : editing?.needsDepartmentLink && !form.department ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  This request was saved with the typed department "{editing.department}". Choose the matching department.
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="minister">Approved by Minister</Label>
+              <Label htmlFor="minister">Minister in charge</Label>
               <Input
                 id="minister"
                 value={form.ministerInCharge}
@@ -532,7 +585,7 @@ export function ReimbursementFormDialog({
 
               {editing?.infoRequestNotes && (
                 <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
-                  <p className="font-medium text-destructive">Finance requested more information</p>
+                  <p className="font-medium text-destructive">Correction requested</p>
                   <p className="mt-1 text-muted-foreground">{editing.infoRequestNotes}</p>
                 </div>
               )}
@@ -554,7 +607,7 @@ export function ReimbursementFormDialog({
               disabled={saving !== null}
               className="w-full sm:w-auto"
             >
-              {saving === "submit" ? "Submitting..." : "Submit for Approval"}
+              {saving === "submit" ? "Submitting..." : editing?.status === 6 ? "Resubmit for Review" : "Submit for Review"}
             </Button>
           </WorkspaceDialogFooter>
           </WorkspaceDialogForm>

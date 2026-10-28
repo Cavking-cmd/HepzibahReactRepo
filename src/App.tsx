@@ -14,7 +14,7 @@ import FellowshipLeaderDashboard from "@/pages/FellowshipLeaderDashboard";
 import InventoryOfficerDashboard from "@/pages/InventoryOfficerDashboard";
 import MemberDashboard from "@/pages/MemberDashboard";
 import AccountsOfficerDashboard from "@/pages/AccountsOfficerDashboard";
-import PastorDashboard from "@/pages/PastorDashboard";
+import SignUpPage from "@/pages/SignUpPage";
 
 export default function App() {
   return (
@@ -22,6 +22,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -83,14 +84,8 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/pastor"
-            element={
-              <ProtectedRoute requiredRole="Pastor">
-                <PastorDashboard />
-              </ProtectedRoute>
-            }
-          />
+          {/* The Pastor login role is retired; old links go back to sign-in. */}
+          <Route path="/pastor" element={<Navigate to="/login" replace />} />
 
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />

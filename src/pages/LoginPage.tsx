@@ -110,6 +110,12 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </p>
+              <div className="border-t border-border/60 pt-4 text-center text-sm">
+                <span className="text-muted-foreground">New church member? </span>
+                <Link to="/signup" className="font-medium text-primary hover:underline">
+                  Create an account
+                </Link>
+              </div>
             </form>
           </CardContent>
         </Card>

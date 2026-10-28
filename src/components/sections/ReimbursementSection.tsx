@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiList, REIMBURSEMENT_STATUS_NAMES, type ReimbursementRequestDto } from "@/lib/api";
-import { formatDay, formatMoney, statusMeta } from "@/lib/reimbursements";
-import { useAuth } from "@/lib/auth";
+import { apiList, RS, type ReimbursementRequestDto } from "@/lib/api";
+import { formatDay, formatMoney, nextStepText, statusMeta } from "@/lib/reimbursements";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,16 +33,19 @@ interface ReimbursementSectionProps {
 const STATUS_FILTERS = [
   { value: "all", label: "All statuses" },
   { value: "0", label: "Draft" },
-  { value: "1", label: "Pending Approval" },
-  { value: "2", label: "Accounts Review" },
-  { value: "3", label: "Approved" },
+  { value: "1", label: "Under Review" },
+  { value: "7", label: "Pending Approval" },
+  { value: "3", label: "Approved · Awaiting Payment" },
   { value: "4", label: "Paid" },
   { value: "5", label: "Rejected" },
-  { value: "6", label: "Info Requested" },
+  { value: "6", label: "Returned for Correction" },
 ];
 
+/** Under Review includes the retired stage 2, which the server moves to 1 at startup. */
+const matchesStatus = (status: number, filter: string) =>
+  filter === "all" || String(status) === filter || (filter === "1" && status === RS.LegacyAccountsReview);
+
 export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
-  const { hasRole } = useAuth();
   const [requests, setRequests] = useState<ReimbursementRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -52,8 +54,8 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
   const [detail, setDetail] = useState<ReimbursementRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const canCreate = mode === "member" || mode === "accountsAdmin";
-  const isAccountsAdmin = hasRole("AccountsAdmin");
+  // Everyone with access can submit their own request; nobody can act on their own.
+  const canCreate = true;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,7 +69,7 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
   }, [load]);
 
   const filtered = [...requests]
-    .filter((request) => statusFilter === "all" || String(request.status) === statusFilter)
+    .filter((request) => matchesStatus(request.status, statusFilter))
     .sort((a, b) => b.createdDate.localeCompare(a.createdDate));
 
   function openCreate() {
@@ -86,14 +88,7 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
     setDetailOpen(true);
   }
 
-  const heading =
-    mode === "member"
-      ? "My Reimbursements"
-      : mode === "accountsOfficer"
-        ? "Accounts Payable"
-        : mode === "pastor"
-          ? "Reimbursement Oversight"
-          : "Accounts Payable";
+  const heading = mode === "member" ? "My Reimbursements" : "All Reimbursements";
 
   return (
     <div className="space-y-4">
@@ -102,10 +97,10 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
           <h2 className="text-xl font-semibold">{heading}</h2>
           <p className="text-sm text-muted-foreground">
             {mode === "member"
-              ? "Prepare a request, attach receipts, and track its approval and payment."
-              : mode === "pastor"
-                ? "Review every reimbursement and approve requests as Minister in charge."
-                : "Reconcile receipts, approve requests, and record payments."}
+              ? "Prepare a request, attach receipts, and track its review, approval and payment."
+              : mode === "accountsOfficer"
+                ? "Every submitted request. Open one to review it and forward it for final approval."
+                : "Every submitted request. Open one to give final approval or confirm payment."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -181,13 +176,21 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
                       <div>{request.payeeName}</div>
                       <div className="text-xs text-muted-foreground">{request.payeeEmail}</div>
                     </TableCell>
-                    <TableCell>{request.department}</TableCell>
+                    <TableCell>
+                      {request.department}
+                      {request.needsDepartmentLink && (
+                        <span className="block text-xs text-amber-700 dark:text-amber-300">not linked</span>
+                      )}
+                    </TableCell>
                     <TableCell>{formatDay(request.requestDate)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatMoney(request.totalAmount)}</TableCell>
                     <TableCell>{request.receiptCount}</TableCell>
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>
-                      {request.status === 6 && request.infoRequestNotes && (
+                      {mode === "member" && request.status !== RS.ReturnedForCorrection && (
+                        <p className="mt-1 max-w-[220px] text-xs text-muted-foreground">{nextStepText(request.status)}</p>
+                      )}
+                      {request.status === RS.ReturnedForCorrection && request.infoRequestNotes && (
                         <p className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground" title={request.infoRequestNotes}>
                           {request.infoRequestNotes}
                         </p>
@@ -216,13 +219,11 @@ export function ReimbursementSection({ mode }: ReimbursementSectionProps) {
 
       <div className="text-xs text-muted-foreground">
         <p>
-          Process: Member submits &rarr; Minister in charge approves &rarr; Accounts Officer reconciles receipts
-          &rarr; {isAccountsAdmin ? "Accounts Admin approves" : "Accounts Admin approves"} &rarr; payment is
-          recorded within three business days of authorization.
+          Process: Member submits (Under Review) &rarr; Accounts Officer reviews and forwards (Pending Approval)
+          &rarr; Accounts Admin gives final approval (Approved) &rarr; Accounts Admin confirms payment (Paid).
         </p>
         <p className="mt-1">
-          Statuses: {Object.values(REIMBURSEMENT_STATUS_NAMES).join(" / ")}. Rejections and information requests
-          are shown on the request.
+          A request can be returned to the member for correction, or rejected with a reason, during review or approval.
         </p>
       </div>
 

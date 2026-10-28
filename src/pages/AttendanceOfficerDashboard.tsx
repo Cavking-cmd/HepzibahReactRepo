@@ -3,11 +3,13 @@ import { DashboardLayout, type NavSection } from "@/components/layout/DashboardL
 import { ServicesSection } from "@/components/sections/ServicesSection";
 import { AttendanceSection } from "@/components/sections/AttendanceSection";
 import { AttendanceReports } from "@/components/sections/reports/AttendanceReports";
-import { Calendar, Users, BarChart3 } from "lucide-react";
+import { PastorsSection } from "@/components/sections/pastors/PastorsSection";
+import { Calendar, Users, BarChart3, UserRound } from "lucide-react";
 
 const SECTIONS: NavSection[] = [
   { id: "services", label: "Services", icon: Calendar },
   { id: "attendance", label: "Attendance", icon: Users },
+  { id: "pastors", label: "Pastors", icon: UserRound },
   { id: "reports", label: "Reports", icon: BarChart3 },
 ];
 
@@ -24,6 +26,7 @@ export default function AttendanceOfficerDashboard() {
     >
       {activeSection === "services" && <ServicesSection canWrite />}
       {activeSection === "attendance" && <AttendanceSection canWrite canApprove={false} />}
+      {activeSection === "pastors" && <PastorsSection />}
       {activeSection === "reports" && <AttendanceReports />}
     </DashboardLayout>
   );

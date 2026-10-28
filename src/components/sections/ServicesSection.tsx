@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TablePagination } from "@/components/TablePagination";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { PastorPicker } from "@/components/sections/pastors/PastorPicker";
 
 interface ServicesSectionProps {
   canWrite: boolean;
@@ -53,7 +54,9 @@ const emptyForm = {
   serviceType: "0",
   theme: "",
   scriptureText: "",
-  preacher: "",
+  pastorId: "",
+  /** Older typed name kept only while the service is not linked to a pastor. */
+  legacyPreacher: "",
 };
 
 function dayFromDate(dateStr: string): string {
@@ -87,7 +90,8 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
       serviceType: String(service.serviceType),
       theme: service.theme ?? "",
       scriptureText: service.scriptureText ?? "",
-      preacher: service.preacher ?? "",
+      pastorId: service.pastorId ?? "",
+      legacyPreacher: service.pastorId ? "" : service.preacher ?? "",
     });
     setOpen(true);
   }
@@ -106,7 +110,9 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
       serviceType: Number(form.serviceType),
       theme: form.theme || null,
       scriptureText: form.scriptureText || null,
-      preacher: form.preacher || null,
+      // Only an id is saved. An older typed name is sent back unchanged so the server keeps it.
+      pastorId: form.pastorId || null,
+      preacher: form.pastorId ? null : form.legacyPreacher || null,
     };
 
     const result = editing
@@ -185,7 +191,12 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
                       service.serviceType}
                   </TableCell>
                   <TableCell>{service.theme ?? "-"}</TableCell>
-                  <TableCell>{service.preacher ?? "-"}</TableCell>
+                  <TableCell>
+                    {service.preacher ?? "-"}
+                    {service.preacherNeedsLink && (
+                      <span className="block text-xs text-amber-700 dark:text-amber-300">typed, not linked</span>
+                    )}
+                  </TableCell>
                   {canWrite && (
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -307,12 +318,12 @@ export function ServicesSection({ canWrite }: ServicesSectionProps) {
 
             <div className="space-y-1.5">
               <Label htmlFor="preacher">Preacher</Label>
-              <Input
+              <PastorPicker
                 id="preacher"
-                value={form.preacher}
-                onChange={(e) =>
-                  setForm({ ...form, preacher: e.target.value })
-                }
+                value={form.pastorId}
+                onChange={(pastorId) => setForm((prev) => ({ ...prev, pastorId }))}
+                currentName={editing?.pastorId === form.pastorId ? editing?.preacher : null}
+                legacyName={form.legacyPreacher || null}
               />
             </div>
 

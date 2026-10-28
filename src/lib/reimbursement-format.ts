@@ -128,18 +128,47 @@ export function statusMeta(status: number): {
     case 0:
       return { label: "Draft", variant: "outline" };
     case 1:
-      return { label: "Pending Approval", variant: "secondary" };
     case 2:
-      return { label: "Accounts Review", variant: "secondary" };
+      return { label: "Under Review", variant: "secondary" };
+    case 7:
+      return { label: "Pending Approval", variant: "secondary" };
     case 3:
-      return { label: "Approved", variant: "default" };
+      return { label: "Approved · Awaiting Payment", variant: "default" };
     case 4:
       return { label: "Paid", variant: "default" };
     case 5:
       return { label: "Rejected", variant: "destructive" };
     case 6:
-      return { label: "Info Requested", variant: "destructive" };
+      return { label: "Returned for Correction", variant: "destructive" };
     default:
       return { label: "Unknown", variant: "outline" };
   }
+}
+
+/** Plain-language "what happens next" for the member. */
+export function nextStepText(status: number): string {
+  switch (status) {
+    case 0:
+      return "Draft. Submit it when your receipts are attached.";
+    case 1:
+    case 2:
+      return "Submitted and awaiting review by an Accounts Officer.";
+    case 7:
+      return "Passed accounts review. Waiting for final approval. Not approved or paid yet.";
+    case 3:
+      return "Approved. Waiting for payment to be made and confirmed.";
+    case 4:
+      return "Paid.";
+    case 5:
+      return "Rejected. See the reason below.";
+    case 6:
+      return "Returned to you for correction. Edit it and resubmit.";
+    default:
+      return "";
+  }
+}
+
+export function formatPercent(value: number | null | undefined, digits = 1): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
+  return `${value.toFixed(digits)}%`;
 }

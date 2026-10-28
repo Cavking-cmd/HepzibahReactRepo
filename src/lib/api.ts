@@ -151,7 +151,12 @@ export interface ServiceDto {
   serviceType: number;
   theme: string | null;
   scriptureText: string | null;
+  /** Selected pastor record. Null for older services that still have typed text. */
+  pastorId: string | null;
+  /** Canonical pastor name, or the original typed text on older services. */
   preacher: string | null;
+  /** True when preacher is old free text not yet linked to a pastor record. */
+  preacherNeedsLink?: boolean;
 }
 
 export interface AttendanceDto {
@@ -208,8 +213,8 @@ export interface InventoryItemDto {
   lastVerifiedDate: string | null;
 }
 
-export type CreateServiceRequest = Omit<ServiceDto, "id">;
-export type UpdateServiceRequest = ServiceDto;
+export type CreateServiceRequest = Omit<ServiceDto, "id" | "preacherNeedsLink">;
+export type UpdateServiceRequest = Omit<ServiceDto, "preacherNeedsLink">;
 
 export type CreateAttendanceRequest = Pick<
   AttendanceDto,
@@ -466,7 +471,12 @@ export interface ReimbursementRequestDto {
   payeeUserId: string;
   payeeEmail: string | null;
   payeeName: string;
+  /** Department record name, "Personal Use", or older typed text. */
   department: string;
+  classification: ReimbursementClassification;
+  departmentId: string | null;
+  /** Older request with only typed department text, waiting to be linked. */
+  needsDepartmentLink: boolean;
   ministerInCharge: string;
   requestDate: string;
   remarks: string | null;
@@ -481,8 +491,17 @@ export interface ReimbursementRequestDto {
   submittedDate: string | null;
   ministerApprovedDate: string | null;
   reviewedDate: string | null;
+  reviewedByName: string | null;
+  reviewNotes: string | null;
   approvedDate: string | null;
+  approvedByName: string | null;
+  approvedAmount: number | null;
+  approvalNotes: string | null;
+  overBudgetAtApproval: boolean;
+  overBudgetJustification: string | null;
   paymentDate: string | null;
+  paymentConfirmedAt: string | null;
+  paidByName: string | null;
   amountPaid: number | null;
   paymentMethod: string | null;
   paymentReference: string | null;
@@ -492,6 +511,8 @@ export interface ReimbursementRequestDto {
   authorizedByName2: string | null;
   authorizationDate: string | null;
   financeNotes: string | null;
+  rejectedDate: string | null;
+  rejectedByName: string | null;
   rejectionReason: string | null;
   infoRequestNotes: string | null;
   createdDate: string;
@@ -516,12 +537,324 @@ export interface ReceiptFileDto {
   data: string;
 }
 
+/** Status numbers stored by the API. 2 is a retired stage that no longer occurs. */
+export const RS = {
+  Draft: 0,
+  UnderReview: 1,
+  LegacyAccountsReview: 2,
+  Approved: 3,
+  Paid: 4,
+  Rejected: 5,
+  ReturnedForCorrection: 6,
+  PendingApproval: 7,
+} as const;
+
 export const REIMBURSEMENT_STATUS_NAMES: Record<number, string> = {
   0: "Draft",
-  1: "Pending Minister Approval",
-  2: "Accounts Review",
-  3: "Approved for Payment",
+  1: "Under Review",
+  2: "Under Review",
+  3: "Approved (awaiting payment)",
   4: "Paid",
   5: "Rejected",
-  6: "Information Requested",
+  6: "Returned for Correction",
+  7: "Pending Approval",
 };
+
+/** 0 = charged to a department, 1 = Personal Use (no department budget). */
+export type ReimbursementClassification = 0 | 1;
+export const CLASSIFICATION = { Department: 0, PersonalUse: 1 } as const;
+
+// ---------------------------------------------------------------- Departments & budgets
+
+export interface DepartmentOptionDto {
+  id: string;
+  name: string;
+}
+
+export interface DepartmentDto {
+  id: string;
+  name: string;
+  description: string | null;
+  annualBudget: number;
+  monthlyBudget: number | null;
+  isActive: boolean;
+  createdDate: string;
+  updatedDate: string | null;
+  requestCount: number;
+}
+
+export interface BudgetAlertDto {
+  code: string;
+  severity: "info" | "warning" | "danger";
+  message: string;
+}
+
+export interface DepartmentBudgetDto {
+  departmentId: string;
+  departmentName: string;
+  isActive: boolean;
+  year: number;
+  month: number;
+  annualBudget: number;
+  paidThisYear: number;
+  committedThisYear: number;
+  pendingThisYear: number;
+  remainingThisYear: number;
+  utilisationPercentThisYear: number | null;
+  monthlyBudget: number | null;
+  paidThisMonth: number;
+  committedThisMonth: number;
+  pendingThisMonth: number;
+  remainingThisMonth: number | null;
+  utilisationPercentThisMonth: number | null;
+  alerts: BudgetAlertDto[];
+}
+
+export interface ReimbursementBudgetDto {
+  reimbursementId: string;
+  isPersonalUse: boolean;
+  needsDepartmentLink: boolean;
+  note: string | null;
+  requestAmount: number;
+  alreadyCommitted: boolean;
+  department: DepartmentBudgetDto | null;
+  projectedRemainingThisYear: number | null;
+  projectedUtilisationPercentThisYear: number | null;
+  projectedRemainingThisMonth: number | null;
+  projectedUtilisationPercentThisMonth: number | null;
+  wouldExceedAnnual: boolean;
+  wouldExceedMonthly: boolean;
+  requiresOverBudgetJustification: boolean;
+  alerts: BudgetAlertDto[];
+  calculationNote: string;
+}
+
+export interface LegacyDepartmentNameDto {
+  legacyName: string;
+  requestCount: number;
+  totalAmount: number;
+  suggestedDepartmentId: string | null;
+  suggestedDepartmentName: string | null;
+}
+
+// ---------------------------------------------------------------- Pastors
+
+export interface PastorDto {
+  id: string;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  description: string | null;
+  isActive: boolean;
+  serviceCount: number;
+  createdDate: string;
+  updatedDate: string | null;
+}
+
+export interface PastorDuplicateDto {
+  message: string;
+  matches: PastorDto[];
+}
+
+export interface LegacyPreacherDto {
+  preacherName: string;
+  serviceCount: number;
+  firstServiceDate: string;
+  lastServiceDate: string;
+  suggestedPastors: PastorDto[];
+}
+
+// ---------------------------------------------------------------- Financial reports
+
+export interface FinanceSummaryDto {
+  from: string;
+  to: string;
+  paidInPeriod: number;
+  paidDepartmentInPeriod: number;
+  paidPersonalUseInPeriod: number;
+  paidCountInPeriod: number;
+  averagePaidInPeriod: number;
+  submittedCountInPeriod: number;
+  requestedInPeriod: number;
+  approvedCountInPeriod: number;
+  approvedInPeriod: number;
+  rejectedCountInPeriod: number;
+  approvedNotPaidNow: number;
+  approvedNotPaidCountNow: number;
+  pendingApprovalNow: number;
+  pendingApprovalCountNow: number;
+  underReviewNow: number;
+  underReviewCountNow: number;
+  returnedForCorrectionNow: number;
+  returnedForCorrectionCountNow: number;
+  budgetYear: number;
+  activeDepartmentCount: number;
+  totalActiveAnnualBudget: number;
+  departmentPaidThisYear: number;
+  departmentCommittedThisYear: number;
+  budgetUtilisationPercent: number | null;
+  departmentsNearLimit: number;
+  departmentsOverBudget: number;
+  warningThresholdPercent: number;
+  unlinkedLegacyRequestCount: number;
+  definitions: string[];
+}
+
+export interface LabelAmountDto {
+  key: string;
+  label: string;
+  isPersonalUse: boolean;
+  amount: number;
+  count: number;
+}
+
+export interface MonthlyExpenditureDto {
+  year: number;
+  month: number;
+  monthLabel: string;
+  paidTotal: number;
+  paidCount: number;
+  averagePaid: number;
+  largestPaid: {
+    id: string;
+    requestNumber: string;
+    payeeName: string;
+    department: string;
+    amount: number;
+    paymentDate: string | null;
+  } | null;
+  approvedTotal: number;
+  approvedCount: number;
+  requestedTotal: number;
+  requestedCount: number;
+  awaitingPaymentCount: number;
+  awaitingPaymentAmount: number;
+  previousMonthPaidTotal: number;
+  paidChangePercent: number | null;
+  paidDepartmentTotal: number;
+  paidPersonalUseTotal: number;
+  paidByDepartment: LabelAmountDto[];
+  definitions: string[];
+}
+
+export interface DepartmentSpendingDto {
+  key: string;
+  departmentId: string | null;
+  department: string;
+  isPersonalUse: boolean;
+  isLegacyUnlinked: boolean;
+  isActive: boolean;
+  annualBudget: number | null;
+  monthlyBudget: number | null;
+  paid: number;
+  committed: number;
+  pending: number;
+  remaining: number | null;
+  utilisationPercent: number | null;
+  requestCount: number;
+  paidCount: number;
+  averagePaid: number;
+  largestPaid: number;
+  rejectedCount: number;
+  isHighestPaid: boolean;
+  isHighestUtilisation: boolean;
+  isOverBudget: boolean;
+  isNearLimit: boolean;
+  hasHighPending: boolean;
+}
+
+export interface DepartmentSpendingReportDto {
+  year: number;
+  warningThresholdPercent: number;
+  rows: DepartmentSpendingDto[];
+  departmentPaidTotal: number;
+  personalUsePaidTotal: number;
+  paidTotal: number;
+  definitions: string[];
+}
+
+export interface TrendPointDto {
+  year: number;
+  month: number;
+  monthLabel: string;
+  paid: number;
+  paidDepartment: number;
+  paidPersonalUse: number;
+  paidCount: number;
+  averagePaid: number;
+  submittedCount: number;
+  requested: number;
+  yearToDateUtilisationPercent: number | null;
+}
+
+export interface SpendingTrendsDto {
+  points: TrendPointDto[];
+  byDepartment: { key: string; label: string; paidByMonth: number[] }[];
+  definitions: string[];
+}
+
+export interface WorkflowReportDto {
+  staleThresholdDays: number;
+  byStatus: { status: number; statusName: string; count: number; amount: number }[];
+  awaitingAction: {
+    id: string;
+    requestNumber: string;
+    payeeName: string;
+    department: string;
+    status: number;
+    statusName: string;
+    waitingFor: string;
+    amount: number;
+    inStatusSince: string;
+    daysInStatus: number;
+    isStale: boolean;
+  }[];
+  staleCount: number;
+  averageDaysUnderReview: number | null;
+  underReviewSampleSize: number;
+  averageDaysSubmissionToApproval: number | null;
+  submissionToApprovalSampleSize: number;
+  averageDaysApprovalToPayment: number | null;
+  approvalToPaymentSampleSize: number;
+  definitions: string[];
+}
+
+export interface DepartmentForecastDto {
+  key: string;
+  departmentId: string | null;
+  department: string;
+  annualBudget: number | null;
+  paidYearToDate: number;
+  committed: number;
+  pending: number;
+  projectedYearEnd: number | null;
+  projectedOverrun: number | null;
+  projectedExhaustionMonth: string | null;
+  remainingIfPendingApproved: number | null;
+  wouldOverrunIfPendingApproved: boolean;
+  lastThreeMonthsPaid: number;
+  previousThreeMonthsPaid: number;
+  isIncreasing: boolean;
+  isReliable: boolean;
+  reliabilityNote: string | null;
+}
+
+export interface FinanceForecastDto {
+  year: number;
+  monthsElapsed: number;
+  departments: DepartmentForecastDto[];
+  unusualReimbursements: {
+    id: string;
+    requestNumber: string;
+    department: string;
+    payeeName: string;
+    amount: number;
+    departmentAverage: number;
+    reason: string;
+  }[];
+  outstandingApprovedCommitments: number;
+  paidThisMonth: number;
+  paidSameMonthLastYear: number;
+  paidPreviousMonth: number;
+  definitions: string[];
+}

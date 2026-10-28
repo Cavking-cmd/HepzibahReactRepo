@@ -1,26 +1,114 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiList, apiRequest, type ReimbursementRequestDto } from "@/lib/api";
-import { formatMoney, statusMeta } from "@/lib/reimbursements";
-import { Badge } from "@/components/ui/badge";
+import { apiList, RS, type ReimbursementRequestDto } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { formatDay, formatMoney, statusMeta } from "@/lib/reimbursements";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { CheckCircle2, FileText, CreditCard } from "lucide-react";
-import { ReimbursementDetailDialog } from "@/components/sections/reimbursement/ReimbursementDetailDialog";
+import { ClipboardCheck, CreditCard, FileSearch, Undo2 } from "lucide-react";
+import {
+  ReimbursementDetailDialog,
+  type ReimbursementMode,
+} from "@/components/sections/reimbursement/ReimbursementDetailDialog";
 
-export function AccountsApprovalDashboard() {
+interface AccountsApprovalDashboardProps {
+  /** "review" = Accounts Officer queue. "final" = Accounts Admin approval and payment queue. */
+  stage: "review" | "final";
+}
+
+function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  return Number.isFinite(ms) ? Math.max(0, Math.floor(ms / 86_400_000)) : null;
+}
+
+function lastEntered(request: ReimbursementRequestDto, status: number): string | null {
+  const entry = request.history.find((h) => h.toStatus === status && h.fromStatus !== status);
+  return entry?.timestamp ?? null;
+}
+
+interface QueueTableProps {
+  rows: ReimbursementRequestDto[];
+  status: number;
+  empty: string;
+  amountLabel: string;
+  amountOf: (r: ReimbursementRequestDto) => number;
+  actionLabel: string;
+  currentUserId: string | undefined;
+  onOpen: (r: ReimbursementRequestDto) => void;
+}
+
+function QueueTable({ rows, status, empty, amountLabel, amountOf, actionLabel, currentUserId, onOpen }: QueueTableProps) {
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">{empty}</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Request #</TableHead>
+            <TableHead>Payee</TableHead>
+            <TableHead>Department</TableHead>
+            <TableHead>In this stage</TableHead>
+            <TableHead className="text-right">{amountLabel}</TableHead>
+            <TableHead className="text-right">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((request) => {
+            const since = lastEntered(request, status) ?? (status === RS.Approved ? request.approvedDate : request.submittedDate);
+            const days = daysSince(since);
+            const own = request.payeeUserId === currentUserId;
+            return (
+              <TableRow key={request.id} className="cursor-pointer" onClick={() => onOpen(request)}>
+                <TableCell className="font-medium">{request.requestNumber}</TableCell>
+                <TableCell>
+                  <div>{request.payeeName}</div>
+                  {own && <div className="text-xs text-amber-700 dark:text-amber-300">Your own request</div>}
+                </TableCell>
+                <TableCell>
+                  {request.department}
+                  {request.needsDepartmentLink && <span className="block text-xs text-amber-700 dark:text-amber-300">not linked</span>}
+                </TableCell>
+                <TableCell>
+                  <span className={days !== null && days > 14 ? "font-medium text-destructive" : ""}>
+                    {days === null ? "-" : days === 0 ? "Today" : `${days} day${days === 1 ? "" : "s"}`}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">since {formatDay(since)}</span>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatMoney(amountOf(request))}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="sm"
+                    variant={own ? "outline" : "default"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpen(request);
+                    }}
+                  >
+                    {own ? "View" : actionLabel}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+export function AccountsApprovalDashboard({ stage }: AccountsApprovalDashboardProps) {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<ReimbursementRequestDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<ReimbursementRequestDto | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [payingId, setPayingId] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [approvalData, setApprovalData] = useState<Record<string, any>>({});
-  const [paymentData, setPaymentData] = useState<Record<string, any>>({});
+
+  const mode: ReimbursementMode = stage === "review" ? "accountsOfficer" : "accountsAdmin";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -33,69 +121,15 @@ export function AccountsApprovalDashboard() {
     void load();
   }, [load]);
 
-  const reviewQueue = requests.filter((r) => r.status === 2);
-  const readyToPay = requests.filter((r) => r.status === 3);
+  const oldestFirst = (a: ReimbursementRequestDto, b: ReimbursementRequestDto) =>
+    (a.submittedDate ?? a.createdDate).localeCompare(b.submittedDate ?? b.createdDate);
 
-  async function approveForPayment(request: ReimbursementRequestDto) {
-    const data = approvalData[request.id] || {};
-    setApprovingId(request.id);
-    const result = await apiRequest("POST", `/api/Reimbursements/${request.id}/approve`, {
-      notes: data.notes?.trim() || "Approved for payment.",
-      preparedBy: data.preparedBy?.trim() || null,
-      chequeNumber: data.chequeNumber?.trim() || null,
-      authorizedByName1: data.authorizedByName1?.trim() || null,
-      authorizedByName2: data.authorizedByName2?.trim() || null,
-      authorizationDate: data.authorizationDate || null,
-    });
-    setApprovingId(null);
-    if (!result.ok) {
-      toast.error(result.body?.message ?? "Approval failed.");
-      return;
-    }
-    toast.success("Approved for payment.");
-    setApprovingId(null);
-    void load();
-  }
+  const underReview = requests.filter((r) => r.status === RS.UnderReview || r.status === RS.LegacyAccountsReview).sort(oldestFirst);
+  const pendingApproval = requests.filter((r) => r.status === RS.PendingApproval).sort(oldestFirst);
+  const approved = requests.filter((r) => r.status === RS.Approved).sort(oldestFirst);
+  const returned = requests.filter((r) => r.status === RS.ReturnedForCorrection);
 
-  async function recordPayment(request: ReimbursementRequestDto) {
-    const data = paymentData[request.id] || {};
-    const amountPaid = Number(data.amountPaid ?? request.totalAmount);
-    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
-      toast.error("Enter the actual amount paid.");
-      return;
-    }
-    if (amountPaid !== request.totalAmount && !data.financeNotes?.trim()) {
-      toast.error("Add a finance note explaining the difference.");
-      return;
-    }
-    if (!data.paymentMethod?.trim()) {
-      toast.error("Payment method is required.");
-      return;
-    }
-
-    const result = await apiRequest("POST", `/api/Reimbursements/${request.id}/payment`, {
-      paymentDate: data.paymentDate || new Date().toISOString().slice(0, 10),
-      amountPaid,
-      paymentMethod: data.paymentMethod.trim(),
-      paymentReference: data.paymentReference?.trim() || null,
-      preparedBy: data.preparedBy?.trim() || null,
-      chequeNumber: data.chequeNumber?.trim() || null,
-      authorizedByName1: data.authorizedByName1?.trim() || null,
-      authorizedByName2: data.authorizedByName2?.trim() || null,
-      authorizationDate: data.authorizationDate || null,
-      financeNotes: data.financeNotes?.trim() || null,
-    });
-
-    if (!result.ok) {
-      toast.error(result.body?.message ?? "Payment could not be recorded.");
-      return;
-    }
-    toast.success("Payment recorded.");
-    setPayingId(null);
-    void load();
-  }
-
-  function openDetail(request: ReimbursementRequestDto) {
+  function open(request: ReimbursementRequestDto) {
     setDetail(request);
     setDetailOpen(true);
   }
@@ -109,188 +143,131 @@ export function AccountsApprovalDashboard() {
     );
   }
 
+  const sum = (rows: ReimbursementRequestDto[], amount: (r: ReimbursementRequestDto) => number) =>
+    rows.reduce((total, r) => total + amount(r), 0);
+
+  const tiles =
+    stage === "review"
+      ? [
+          { label: "Waiting for your review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
+          { label: "With the member for correction", count: returned.length, amount: sum(returned, (r) => r.totalAmount), icon: Undo2 },
+          { label: "Forwarded, awaiting final approval", count: pendingApproval.length, amount: sum(pendingApproval, (r) => r.totalAmount), icon: ClipboardCheck },
+        ]
+      : [
+          { label: "Waiting for final approval", count: pendingApproval.length, amount: sum(pendingApproval, (r) => r.totalAmount), icon: ClipboardCheck },
+          { label: "Approved, awaiting payment", count: approved.length, amount: sum(approved, (r) => r.approvedAmount ?? r.totalAmount), icon: CreditCard },
+          { label: "Still under accounts review", count: underReview.length, amount: sum(underReview, (r) => r.totalAmount), icon: FileSearch },
+        ];
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Accounts Approval & Payment</h2>
-        <p className="text-sm text-muted-foreground">Review requests in accounts review, approve for payment, and mark as paid.</p>
+        <h2 className="text-xl font-semibold">{stage === "review" ? "Review Queue" : "Final Approval & Payment"}</h2>
+        <p className="text-sm text-muted-foreground">
+          {stage === "review"
+            ? "Check receipts and the department budget, then forward each request for final approval, return it for correction, or reject it."
+            : "Give final approval to requests that passed accounts review, then confirm payment once the money has actually been sent."}
+        </p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <FileText className="h-5 w-5" />
-          <CardTitle>Awaiting Accounts Approval ({reviewQueue.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {reviewQueue.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No requests awaiting approval.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Request #</TableHead>
-                    <TableHead>Payee</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reviewQueue.map((request) => {
-                    const status = statusMeta(request.status);
-                    const data = approvalData[request.id] || {};
-                    return (
-                      <>
-                        <TableRow key={request.id} className="cursor-pointer" onClick={() => openDetail(request)}>
-                          <TableCell className="font-medium">{request.requestNumber}</TableCell>
-                          <TableCell>{request.payeeName}</TableCell>
-                          <TableCell>{request.department}</TableCell>
-                          <TableCell className="text-right tabular-nums">{formatMoney(request.totalAmount)}</TableCell>
-                          <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
-                          <TableCell className="text-right">
-                            <Button size="sm" onClick={(e) => { e.stopPropagation(); setApprovingId(approvingId === request.id ? null : request.id); }}>
-                              <CheckCircle2 className="h-4 w-4 mr-1" /> {approvingId === request.id ? "Close" : "Approve for Payment"}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                        {approvingId === request.id && (
-                          <TableRow key={`${request.id}-approval`}>
-                            <TableCell colSpan={6} className="bg-muted/30">
-                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 py-2">
-                                <div className="space-y-1">
-                                  <Label>Prepared By</Label>
-                                  <Input value={data.preparedBy || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, preparedBy: e.target.value}})} placeholder="Name of preparer" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label>Cheque Number</Label>
-                                  <Input value={data.chequeNumber || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, chequeNumber: e.target.value}})} />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label>Authorization Date</Label>
-                                  <Input type="date" value={data.authorizationDate || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizationDate: e.target.value}})} />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label>Authorized By (1)</Label>
-                                  <Input value={data.authorizedByName1 || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizedByName1: e.target.value}})} />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label>Authorized By (2)</Label>
-                                  <Input value={data.authorizedByName2 || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, authorizedByName2: e.target.value}})} />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label>Notes</Label>
-                                  <Input value={data.notes || ""} onChange={(e) => setApprovalData({...approvalData, [request.id]: {...data, notes: e.target.value}})} placeholder="Optional approval note" />
-                                </div>
-                                <div className="flex gap-2 lg:col-span-3">
-                                  <Button onClick={(e) => { e.stopPropagation(); void approveForPayment(request); }} disabled={approvingId === request.id && payingId !== null}>
-                                    <CheckCircle2 className="h-4 w-4 mr-1" /> Confirm Approval
-                                  </Button>
-                                  <Button variant="outline" onClick={(e) => { e.stopPropagation(); setApprovingId(null); }}>Cancel</Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {tiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <Card key={tile.label}>
+              <CardContent className="flex items-center gap-3 py-4">
+                <Icon className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">{tile.label}</p>
+                  <p className="text-lg font-semibold">
+                    {tile.count} <span className="text-sm font-normal text-muted-foreground">· {formatMoney(tile.amount)}</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <CreditCard className="h-5 w-5" />
-          <CardTitle>Ready to Pay ({readyToPay.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {readyToPay.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No requests ready for payment.</p>
-          ) : (
-            readyToPay.map((request) => {
-              const status = statusMeta(request.status);
-              const data = paymentData[request.id] || {};
-              return (
-                <Card key={request.id} className="border-border/70">
-                  <CardHeader className="pb-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{request.requestNumber}</span>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => openDetail(request)}>View Details</Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{request.payeeName} • {request.department} • {formatMoney(request.totalAmount)}</p>
-                  </CardHeader>
-                  <CardContent>
-                    {payingId === request.id ? (
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        <div className="space-y-1">
-                          <Label>Payment Date</Label>
-                          <Input type="date" value={data.paymentDate || new Date().toISOString().slice(0,10)} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, paymentDate: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Amount Paid</Label>
-                          <Input type="number" step="0.01" value={data.amountPaid ?? request.totalAmount} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, amountPaid: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Payment Method *</Label>
-                          <Input value={data.paymentMethod || "E-Transfer"} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, paymentMethod: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Cheque Number</Label>
-                          <Input value={data.chequeNumber || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, chequeNumber: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Payment Reference</Label>
-                          <Input value={data.paymentReference || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, paymentReference: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Prepared By</Label>
-                          <Input value={data.preparedBy || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, preparedBy: e.target.value}})} placeholder={request.preparedBy || "Name of preparer"} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Authorization Date</Label>
-                          <Input type="date" value={data.authorizationDate || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, authorizationDate: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Authorized By (1)</Label>
-                          <Input value={data.authorizedByName1 || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, authorizedByName1: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Authorized By (2)</Label>
-                          <Input value={data.authorizedByName2 || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, authorizedByName2: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-                          <Label>Finance Notes</Label>
-                          <Input value={data.financeNotes || ""} onChange={(e) => setPaymentData({...paymentData, [request.id]: {...data, financeNotes: e.target.value}})} placeholder="Required if amount differs from total" />
-                        </div>
-                        <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
-                          <Button onClick={() => void recordPayment(request)}>Mark as Paid</Button>
-                          <Button variant="outline" onClick={() => setPayingId(null)}>Cancel</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button onClick={() => setPayingId(request.id)}><CreditCard className="h-4 w-4 mr-1" /> Pay This Bill</Button>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+      {stage === "review" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileSearch className="h-5 w-5" /> Under Review ({underReview.length})
+            </CardTitle>
+            <CardDescription>Oldest first. Forwarding does not approve or pay a request.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <QueueTable
+              rows={underReview}
+              status={RS.UnderReview}
+              empty="Nothing is waiting for review."
+              amountLabel="Requested"
+              amountOf={(r) => r.totalAmount}
+              actionLabel="Review"
+              currentUserId={user?.id}
+              onOpen={open}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardCheck className="h-5 w-5" /> Pending Approval ({pendingApproval.length})
+              </CardTitle>
+              <CardDescription>Passed accounts review. Approving does not mark a request as paid.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QueueTable
+                rows={pendingApproval}
+                status={RS.PendingApproval}
+                empty="Nothing is waiting for final approval."
+                amountLabel="Requested"
+                amountOf={(r) => r.totalAmount}
+                actionLabel="Decide"
+                currentUserId={user?.id}
+                onOpen={open}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CreditCard className="h-5 w-5" /> Approved · Awaiting Payment ({approved.length})
+              </CardTitle>
+              <CardDescription>Confirm payment only after the money has actually been paid.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <QueueTable
+                rows={approved}
+                status={RS.Approved}
+                empty="No approved requests are waiting for payment."
+                amountLabel="Approved"
+                amountOf={(r) => r.approvedAmount ?? r.totalAmount}
+                actionLabel="Confirm Payment"
+                currentUserId={user?.id}
+                onOpen={open}
+              />
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {stage === "review" && returned.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {returned.length} request{returned.length === 1 ? " is" : "s are"} back with the member for correction:{" "}
+          {returned.map((r) => r.requestNumber).join(", ")}. {statusMeta(RS.ReturnedForCorrection).label} requests return to this queue when resubmitted.
+        </p>
+      )}
 
       <ReimbursementDetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
         request={detail}
-        mode="accountsOfficer"
+        mode={mode}
         onEdit={() => {}}
         onChanged={() => void load()}
       />

@@ -1,22 +1,10 @@
-import { useState } from "react";
-import { DashboardLayout, type NavSection } from "@/components/layout/DashboardLayout";
-import { ReimbursementSection } from "@/components/sections/ReimbursementSection";
-import { ClipboardCheck } from "lucide-react";
+import { Navigate } from "react-router-dom";
 
-const SECTIONS: NavSection[] = [{ id: "reimbursements", label: "Reimbursement Oversight", icon: ClipboardCheck }];
-
+/**
+ * The Pastor login role has been retired. Pastors are now name records chosen
+ * when creating services (Pastors section for Admin and Attendance Officers).
+ * This file is kept only so old imports do not break; it is no longer routed.
+ */
 export default function PastorDashboard() {
-  const [activeSection, setActiveSection] = useState("reimbursements");
-
-  return (
-    <DashboardLayout
-      title="Pastor"
-      roleLabel="Pastor / Minister in Charge"
-      sections={SECTIONS}
-      activeSection={activeSection}
-      onSectionChange={setActiveSection}
-    >
-      {activeSection === "reimbursements" && <ReimbursementSection mode="pastor" />}
-    </DashboardLayout>
-  );
+  return <Navigate to="/login" replace />;
 }
